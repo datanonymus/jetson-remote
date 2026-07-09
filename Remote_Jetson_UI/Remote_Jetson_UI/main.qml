@@ -160,7 +160,7 @@ Window {
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         // Lấy kích thước thật từ C++ (Nếu chưa có data thì ngầm định 1280x720)
         function mapX(mouseX) {
@@ -176,6 +176,7 @@ Window {
             let currentClick = 0
             if (mouse.buttons & Qt.LeftButton) currentClick = 1
             else if (mouse.buttons & Qt.RightButton) currentClick = 2
+            else if (mouse.buttons & Qt.MiddleButton) currentClick = 3
             backend.sendMouseData(mapX(mouse.x), mapY(mouse.y), currentClick)
         }
 
@@ -183,6 +184,7 @@ Window {
             let clickType = 0
             if (mouse.button === Qt.LeftButton) clickType = 1
             else if (mouse.button === Qt.RightButton) clickType = 2
+            else if (mouse.button === Qt.MiddleButton) clickType = 3
             mainArea.forceActiveFocus()
             backend.sendMouseData(mapX(mouse.x), mapY(mouse.y), clickType)
         }

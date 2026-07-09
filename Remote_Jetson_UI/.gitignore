@@ -1,5 +1,5 @@
 # Bỏ qua thư mục build của Qt
-build-*/
+build*/
 *.pro.user
 
 # Bỏ qua các file object và thực thi sinh ra lúc biên dịch
