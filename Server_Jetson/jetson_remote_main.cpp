@@ -155,9 +155,12 @@ int main(int argc, char *argv[]) {
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 1); // Giữ chuột trái
                     } else if (packet.click == 2) {
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 1); // Giữ chuột phải
+                    } else if (packet.click == 3) {
+                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 1); // Giữ chuột giữa
                     } else if (packet.click == 0) {
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 0); // Nhả trái
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 0); // Nhả phải
+                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 0); // Nhả giữa
                     }
                     if (packet.scroll != 0) {
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_REL, REL_WHEEL, packet.scroll);
