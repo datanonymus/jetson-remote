@@ -6,6 +6,9 @@ namespace JetsonRemote {
     std::string target_display = ":0"; // Biến toàn cục giữ tên màn hình
     std::string target_ip = "127.0.0.1"; 
     std::string target_bitrate = "8000000";
+    std::string pending_client_ip = "";
+    int pairing_pin = -1;
+    bool is_allowed = false; // Biến kiểm tra xem đã được cấp phép chưa
     bool is_streaming = false; // Biến cờ để đánh dấu trạng thái streaming
 
     void init_virtual_mouse(int width, int height) {
@@ -44,7 +47,7 @@ namespace JetsonRemote {
         uud.absmin[ABS_X] = 0; uud.absmax[ABS_X] = width;
         uud.absmin[ABS_Y] = 0; uud.absmax[ABS_Y] = height;
 
-        write(uinput_fd, &uud, sizeof(uud));
+        if (write(uinput_fd, &uud, sizeof(uud)) < 0) {/*Bỏ qua lỗi*/}
         ioctl(uinput_fd, UI_DEV_CREATE);
         std::cout << "[+] Đã tạo chuột ảo Dynamic: " << width << "x" << height << "\n";
     }
@@ -60,10 +63,10 @@ namespace JetsonRemote {
         }
         
         // Yêu cầu GStreamer tự sát nhẹ nhàng bằng kill -15 (SIGTERM)
-        system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi");
+        if (system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi") < 0) {/*Bỏ qua lỗi*/}
         
         std::cout << "[+] Shutting down...\n";
-        system("pkill -f 'tegrastats'"); // Dừng luôn cả script giám sát tegrastats
+        if (system("pkill -f 'tegrastats'") < 0) {/*Bỏ qua lỗi*/} // Dừng luôn cả script giám sát tegrastats
         exit(0);
     }
 
@@ -71,7 +74,7 @@ namespace JetsonRemote {
         std::cout << "\n[*] Đang kiểm tra và dọn dẹp luồng GStreamer cũ...\n";
         
         // Chỉ Kill đúng cái tiến trình có mã PID lưu trong file tạm (nếu file tồn tại)
-        system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi"); 
+        if (system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi") < 0) {/*Bỏ qua lỗi*/}
         
         sleep(2); 
         
@@ -83,7 +86,7 @@ namespace JetsonRemote {
                             " profile=4 ! rtph264pay mtu=1200 config-interval=1 ! udpsink host=" + target_ip + 
                             " port=5000 buffer-size=2147483647 > /dev/null 2>&1 & echo $! > /tmp/jetson_remote_gst.pid";
 
-        system(gst_cmd.c_str());
+        if (system(gst_cmd.c_str()) < 0) {/*Bỏ qua lỗi*/}
         std::cout << "[+] Đã khởi động GStreamer! Đang gửi " << target_bitrate << " bps tới IP " << target_ip << "...\n";
     }
 
@@ -93,7 +96,7 @@ namespace JetsonRemote {
         ie.type = type;
         ie.code = code;
         ie.value = val;
-        write(fd, &ie, sizeof(ie));
+        if (write(fd, &ie, sizeof(ie)) < 0) {/*Bỏ qua lỗi*/}
     }
 
     // Luồng giám sát X11 bằng xrandr
@@ -188,8 +191,51 @@ namespace JetsonRemote {
         if (!ret) {
             std::cout << "[!] Lỗi: Không tìm thấy thư mục ./web! Giao diện sẽ không hiển thị được.\n";
         }
+        
+        // API 1: Báo cho WebUI biết có Client xin vào
+        svr.Get("/api/check_pending", [](const httplib::Request &req, httplib::Response &res) {
+            std::string json = "{\"pending_ip\": \"" + pending_client_ip + "\"}";
+            res.set_content(json, "application/json");
+        });
 
-        // Tạo Endpoint API trả về dữ liệu Tegrastats ở dạng JSON
+        // API 2: Nhập mã PIN từ WebUI để duyệt
+        svr.Get("/api/authorize", [](const httplib::Request &req, httplib::Response &res){
+            std::cout << "\n[DEBUG] WebUI vừa gọi API /api/authorize\n";
+
+            if (req.has_param("pin")) {
+                int entered_pin = std::stoi(req.get_param_value("pin"));
+
+                std::cout << "[DEBUG] WebUI nhập PIN: " << entered_pin << " | Jetson đang chờ PIN: " << pairing_pin << "\n";
+
+                // Nếu khớp pin và đang có Client xin vào
+                if (entered_pin == pairing_pin && pairing_pin != -1) {
+                    std::cout << "[+] Đã duyệt! Đang mở cổng cho Client " << pending_client_ip << "\n";
+                    
+                    target_ip = pending_client_ip; // Gán IP chính thức
+                    pending_client_ip = ""; // Xóa hàng chờ
+                    pairing_pin = -1; // Hủy mã PIN cũ (để chống Replay attack)
+
+                    restart_gstreamer(); // Chạy GStreamer
+                    is_streaming = true;
+                    
+                    // Reset bộ đếm thời gian toàn cục
+                    last_packet_time = std::chrono::steady_clock::now();
+
+                    res.set_content("{\"status\":\"success\"}","application/json");
+                    return;
+                } else {
+                    std::cout << "[!] Lỗi: PIN không khớp hoặc không có Client nào đang đợi!";
+                }
+            } else {
+                std:: cout << "[!] Lỗi: Request từ WebUI bị thiếu tham số '?pin='!\n";
+            }
+
+            // Nếu không khớp thì trả về lỗi
+            res.status = 401;
+            res.set_content("{\"status\":\"error\",\"msg\":\"Sai mã PIN, vui lòng nhập lại!\"}","application/json");
+        });
+
+        // API 3: Tạo Endpoint API trả về dữ liệu Tegrastats ở dạng JSON
         svr.Get("/api/stats", [](const httplib::Request &, httplib::Response &res) {
             std::string raw_stats = get_tegrastats_string();
             
@@ -205,7 +251,7 @@ namespace JetsonRemote {
     }
     void stop_gstreamer() {
         std::cout << "[!] Phát hiện mất kết nối. Đang tắt GStreamer để tiết kiệm điện...\n";
-        system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi");
+        if (system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi") < 0) {/*Bỏ qua lỗi*/}
         is_streaming = false;
     }
 }

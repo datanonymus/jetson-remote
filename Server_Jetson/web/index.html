@@ -66,7 +66,11 @@
         <div id="pin" class="tab-content">
             <div class="box">
                 <h2>&#128274; Quản lý mã PIN</h2>
-                <p>Giao diện cấp quyền và bảo mật cho Client.</p>
+                <p style="color: #aaa; font-size: 15px; margin-bottom: 15px;">Vui lòng nhập mã PIN được cấp trong ứng dụng Jetson Remote - Client</p>
+                <input type="password" id="pin-input" placeholder="Mã PIN gồm 4 số..." maxlength="8" style="width: 100%; padding: 10px; background: #111 solid #555; color: #00ff00; text-align: center; font-size: 18px; font-bold: true; border-radius: 4px; outline: none; letter-spacing: 4px; margin-bottom: 20px;">
+                <br>
+                <button onclick="submitPin()" style="width: 100%; padding: 12px; background: #008800; border: none; color: white; font-size: 15px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: 0.3s;">CONNECT</button>
+                <p id="pin-error" style="color: #ff3333; font-size: 12px; margin-top: 10px; display: none;">⚠️Mã PIN không chính xác!</p>
             </div>
         </div>
 
@@ -86,51 +90,8 @@
 
     </div>
 
-    <script>
-        const menuToggle = document.getElementById('menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        const closeBtn = document.getElementById('close-btn');
-
-        // Hàm Tắt Sidebar
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('show');
-        }
-
-        // Bấm nút 3 gạch -> Mở Sidebar + Hiện màng đen
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.add('open');
-            overlay.classList.add('show');
-        });
-
-        // Bấm nút X hoặc bấm ra ngoài màng đen -> Đóng Sidebar
-        closeBtn.addEventListener('click', closeSidebar);
-        overlay.addEventListener('click', closeSidebar);
-
-        // Hàm chuyển Tab
-        function openTab(tabId, element) {
-            const tabs = document.getElementsByClassName('tab-content');
-            for (let i = 0; i < tabs.length; i++) {
-                tabs[i].classList.remove('active');
-            }
-            
-            const navs = document.querySelectorAll('.nav-links li');
-            navs.forEach(nav => nav.classList.remove('active'));
-
-            document.getElementById(tabId).classList.add('active');
-            element.classList.add('active');
-
-            closeSidebar();
-
-            // Khi mở tab Monitor, giả vờ như màn hình vừa bị đổi kích thước để  Chart.js tự động giãn nở ra!
-            if (tabId === 'monitor') {
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                }, 50); // Chờ 50ms cho CSS nó phình ra xong mới gọi
-            }
-        }
-    </script>
+    <script src="menu.js?v=1"></script>
+    <script src="check_pin.js?v=1"></script>
     <script src="script.js?v=1"></script>
 </body>
 </html>

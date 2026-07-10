@@ -35,6 +35,10 @@ namespace JetsonRemote {
     extern std::string latest_tegrastats;
     extern std::mutex stats_mtx;
     extern bool is_streaming;
+    extern std::string pending_client_ip; // Biến toàn cục chứa mã pin
+    extern int pairing_pin;
+    extern bool is_allowed; // Biến kiểm tra xem đã được cấp phép hay chưa
+    extern std::chrono::time_point<std::chrono::steady_clock> last_packet_time; // Biến thời gian toàn cục
 
     // Khai báo các hàm sẽ dùng
     void init_virtual_mouse(int width, int height);

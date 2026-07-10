@@ -1,5 +1,7 @@
 #include "include/jetson_remote.hpp"
 
+std::chrono::time_point<std::chrono::steady_clock> JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
+
 int main(int argc, char *argv[]) {
     // Đăng ký bắt sự kiện Ctrl+C (SIGINT) để dọn dẹp trước khi chết
     signal(SIGINT, JetsonRemote::cleanup_and_exit);
@@ -48,9 +50,6 @@ int main(int argc, char *argv[]) {
 
     std::cout << "[*] Mouse Server đang chờ lệnh cấu hình...\n";
 
-    // Gọi hàm khởi động GStreamer ngay lúc mới mở tool
-    // JetsonRemote::restart_gstreamer();
-
     // Bật Camera giám sát màn hình X11 chạy ngầm
     std::thread monitor_thread(JetsonRemote::monitor_resolution);
     monitor_thread.detach();
@@ -67,17 +66,16 @@ int main(int argc, char *argv[]) {
     tv.tv_usec = 0;
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
 
-    // Biến quản lý thời gian kết nối
-    auto last_packet_time = std::chrono::steady_clock::now();
     int current_w = 0, current_h = 0; // Để tránh tạo lại chuột vô tội vạ
 
     while (true) {
         // Kiểm tra Timeout: Nếu đang stream mà quá 5 giây chưa nhận được gì thì tắt GStreamer!
         auto now = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_packet_time).count();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - JetsonRemote::last_packet_time).count();
         
         if (JetsonRemote::is_streaming && duration > 5) {
             JetsonRemote::stop_gstreamer();
+            JetsonRemote::is_streaming = false;
         }
 
         if (recvfrom(sock, &packet, sizeof(MouseAndKeyboardPacket), 0, (struct sockaddr *)&client_addr, &client_len) > 0) {
@@ -87,35 +85,30 @@ int main(int argc, char *argv[]) {
             //          << " | signal: " << packet.signal << "\n";
 
             // Cập nhật lại thời gian nhận gói tin mới nhất
-            last_packet_time = std::chrono::steady_clock::now();
+            JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
 
             // Dịch IP của Laptop từ mã nhị phân sang chuỗi
             std::string sender_ip = inet_ntoa(client_addr.sin_addr);
 
             // Kiểm tra lệnh từ Laptop
             if (packet.signal == 999) {
-            // Chỉ bật GStreamer nếu chưa bật HOẶC đổi IP
-                if (!JetsonRemote::is_streaming || JetsonRemote::target_ip != sender_ip) {
-                    std::cout << "\n[!] Laptop (Client) " << sender_ip << " đã yêu cầu Remote!\n";
-                    JetsonRemote::target_ip = sender_ip; 
-                    JetsonRemote::restart_gstreamer(); 
-                    JetsonRemote::is_streaming = true;
-                }
-                
-                // Chỉ tạo lại chuột nếu độ phân giải thay đổi
-                if (packet.x != current_w || packet.y != current_h) {
-                    std::cout << "[*] Cấu hình lại chuột ảo: " << packet.x << "x" << packet.y << "\n";
-                    JetsonRemote::init_virtual_mouse(packet.x, packet.y);
-                    current_w = packet.x;
-                    current_h = packet.y;
-                }
-                continue;
+                // Lưu IP và mã PIN để WebUI kiểm tra và cấp phép
+                JetsonRemote::pending_client_ip = sender_ip;
+                JetsonRemote::pairing_pin = packet.keycode; // Lấy mã PIN từ Client
+
+                std::cout << "\n[*] Laptop (Client) " << sender_ip << " xin quyền Remote. Mã PIN của thiết bị là: " << packet.keycode << "\n";
             }
 
             // Lệnh ngắt kết nối từ Laptop
             if (packet.signal == 998) {
                 std::cout << "\n[!] Laptop (Client) " << sender_ip << " đã ngắt kết nối!\n";
                 
+                // Nếu Client đang chờ duyệt mà tắt app thì xóa luôn hàng chờ
+                if (JetsonRemote::pending_client_ip == sender_ip) {
+                    JetsonRemote::pending_client_ip = "";
+                    JetsonRemote::pairing_pin = -1;
+                }
+
                 if (JetsonRemote::is_streaming) {
                     JetsonRemote::stop_gstreamer(); 
                 }
@@ -127,10 +120,29 @@ int main(int argc, char *argv[]) {
 
             if (packet.signal == 888) {
                 std::cout << "\n[!] Nhận được deadlock signal! \n";
-                JetsonRemote::restart_gstreamer(); // Gọi quản gia ra dọn dẹp và bật lại
+                if (JetsonRemote::is_streaming) {
+                    JetsonRemote::restart_gstreamer(); // Gọi quản gia ra dọn dẹp và bật lại
+                }
                 continue;
             }
 
+            // Tín hiệu 777: Báo cáo thay đổi độ phân giải từ QML
+            if (packet.signal == 777) {
+                // Nếu độ phân giải thực sự thay đổi thì tạo lại lưới chuột
+                if (packet.x != current_w || packet.y != current_h) {
+                    std::cout << "[*] QML báo đổi độ phân giải. Cấu hình lại chuột ảo: " << packet.x << "x" << packet.y << "\n";
+                    JetsonRemote::init_virtual_mouse(packet.x, packet.y);
+                    current_w = packet.x;
+                    current_h = packet.y;
+                }
+                continue;
+            }
+            
+            // Tín hiệu 111: Tín hiệu giữ kết nối từ QML gửi sang mỗi giây
+            if (packet.signal == 111) {
+                // Không làm gì cả
+                continue;
+            }
             // Nếu chưa được cấu hình mà đã nhận data chuột thì bỏ qua
             if (JetsonRemote::uinput_fd < 0) continue;
 

@@ -5,7 +5,7 @@ build-*/
 # Bỏ qua các file object và thực thi sinh ra lúc biên dịch
 *.o
 *.out
-wsr_mouse
+jetson_remote
 
 # Bỏ qua file log rác
 *.log
