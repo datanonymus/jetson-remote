@@ -48,7 +48,7 @@ void UdpSender::sendMouseData(int x, int y, int click, int scroll)
 }
 
 // Hàm signal
-void UdpSender::sendSignal(int signal, int width, int height)
+void UdpSender::sendSignal(int signal, int width, int height, int pin)
 {
     MouseAndKeyboardPacket packet;
     memset(&packet, 0, sizeof(packet)); // Dọn rác trong RAM
@@ -56,6 +56,7 @@ void UdpSender::sendSignal(int signal, int width, int height)
     packet.signal = signal;
     packet.x = width;
     packet.y = height;
+    packet.keycode = pin; // Lưu trữ mã PIN
 
     // Đóng gói và gửi sang Jetson bằng m_targetIp
     m_socket->writeDatagram(reinterpret_cast<const char*>(&packet),

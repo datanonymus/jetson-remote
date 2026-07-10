@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Window 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Window
+import QtQuick.Controls
 
 Window {
     id: mainWindow
@@ -16,6 +16,123 @@ Window {
         onActivated: ipPopup.open()
     }
 
+    Popup {
+        id: pinPopup
+        width: 350
+        height: 200
+        modal: true
+        focus: true
+        anchors.centerIn: parent
+        closePolicy: Popup.CloseOnEscape
+
+        background: Rectangle {
+            color: "#222";
+            radius: 8;
+            border.color: "#00ff00";
+            border.width: 2
+        }
+        Column {
+            anchors.centerIn: parent;
+            spacing: 15;
+            Text {
+                text: "Phát hiện thiết bị mới!"
+                color: "#fff";
+                font.bold: true;
+                font.pixelSize: 16;
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            Text {
+                text: "Vui lòng cung cấp mã PIN này cho Admin:"
+                color: "#aaa"
+                font.pixelSize: 15
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Row {
+                spacing: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                // Ô Text chỉ đọc để hiển thị PIN
+                TextField {
+                    id: pinDisplay
+                    text: ""
+                    readOnly: true
+                    color: "#00ff00"
+                    font.pixelSize: 24
+                    font.bold: true
+                    font.letterSpacing: 5
+                    horizontalAlignment: TextInput.AlignHCenter
+                    background: Rectangle{
+                        color: "#111";
+                        border.color: "#555";
+                        border.width: 1;
+                        radius: 4
+                    }
+                }
+
+                // Nút Copy
+                Button {
+                    id: copyBtn
+                    width: 70
+                    height: 37
+                    text: "Copy"
+                    onClicked: {
+                        pinDisplay.selectAll()
+                        pinDisplay.copy()
+                        pinDisplay.deselect()
+                        copyBtn.text = "Copied!"
+                        copyTimer.start() // Đổi chữ lại sau 2 giây
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: "#008800";
+                        radius: 4
+                    }
+
+                    // Bộ đếm thời gian để đổi chữ lại
+                    Timer {
+                        id: copyTimer
+                        interval: 2000
+                        onTriggered: copyBtn.text = "Copy"
+                    }
+                }
+            }
+
+            // Nút Close & Nhập lại IP
+            Row {
+                spacing: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    id: closeButton
+                    width: 70
+                    height: 25
+                    text: "Close"
+                    onClicked: {
+                        watchdogTimer.restart()
+                        pinPopup.close()
+                        mainWindow.requestActivate()
+                    }
+                }
+                Button {
+                    id: returnIpPopupButton
+                    width: 150
+                    height: 25
+                    text: "Change IP Address"
+                    onClicked: {
+                        pinPopup.close()
+                        ipPopup.open()
+                    }
+                }
+            }
+        }
+    }
+
     // Cửa sổ Pop-up nhập IP
     Popup {
         id: ipPopup
@@ -29,6 +146,10 @@ Window {
         onClosed: {
             console.log("[*] Pop-up đã đóng. Trả lại quyền nhập liệu cho màn hình chính!")
             mainArea.forceActiveFocus() // ÉP màn hình chính cầm lại quyền!
+        }
+
+        onOpened: {
+            watchdogTimer.stop()
         }
 
         // Thiết kế background cho cái hộp thoại
@@ -98,15 +219,20 @@ Window {
                     let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 1280
                     let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 720
 
+                    let dynamicPin = Math.floor(1000 + Math.random() * 9000);
                     // Gọi đánh thức
-                    console.log("Đang gọi Jetson ở IP: " + ipInput.text + " với cỡ " + w + "x" + h)
-                    backend.sendSignal(999, w, h)
+                    console.log("Đang gọi Jetson ở IP: " + ipInput.text + ". Mã PIN của bạn là: " + dynamicPin)
+                    backend.sendSignal(999, w, h, dynamicPin)
 
-                    // Đóng Popup
+                    // Màn hình chờ duyệt
+                    pinDisplay.text = dynamicPin.toString()
+                    copyBtn.text = "Copy"
+
+                    // Giấu Pop-up nhập IP, hiện Pop-up mã PIN lên
                     ipPopup.close()
-
+                    pinPopup.open()
                     // Trả lại quyền điều khiển cho màn hình chính
-                    mainWindow.requestActivate()
+                    //mainWindow.requestActivate()
                 }
             }
         }
@@ -138,7 +264,7 @@ Window {
             function onResolutionChanged() {
                 console.log("Phát hiện Jetson đổi phân giải: " + videoReceiver.hostWidth + "x" + videoReceiver.hostHeight)
                 // Lập tức nã gói tin cấu hình sang Jetson
-                backend.sendSignal(999, videoReceiver.hostWidth, videoReceiver.hostHeight)
+                backend.sendSignal(777, videoReceiver.hostWidth, videoReceiver.hostHeight, 0)
             }
         }
     }
@@ -152,7 +278,19 @@ Window {
         onTriggered: {
             console.log("[!] Deadlock Detected! GStreamer đã bị lỗi. Gửi lệnh 888 để Reset...")
             // Dùng số 888 làm Magic Number ra lệnh Kill/Restart
-            backend.sendSignal(888, 0, 0)
+            backend.sendSignal(888, 0, 0, 0)
+        }
+    }
+
+    Timer {
+        id: keepAliveTimer
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            // Gửi tin hiệu 111 sang Jetson
+            // Jetson nhận được tín hiệu này thì cập nhật lại last_packet_time, không bao giờ bị timeout
+            backend.sendSignal(111, 0, 0, 0)
         }
     }
 
@@ -223,10 +361,11 @@ Window {
             event.accepted = true
         }
     }
+
     // BẪY SỰ KIỆN: Khi người dùng bấm nút X tắt cửa sổ
     onClosing: {
         console.log("[!] Đang đóng app, gửi lệnh khai tử 998 cho Jetson...")
-        // Ném lệnh 998 đi trước khi hệ thống kịp giết app (x, y lúc này truyền 0)
-        backend.sendSignal(998, 0, 0)
+        // Ném lệnh 998 đi trước khi hệ thống kịp giết app (x, y, pin lúc này truyền 0)
+        backend.sendSignal(998, 0, 0, 0)
     }
 }
