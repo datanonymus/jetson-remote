@@ -68,6 +68,9 @@ int main(int argc, char *argv[]) {
 
     int current_w = 0, current_h = 0; // Để tránh tạo lại chuột vô tội vạ
 
+    // Khởi tạo toàn bộ danh sách các thiết bị
+    JetsonRemote::load_trusted_devices();
+
     while (true) {
         // Kiểm tra Timeout: Nếu đang stream mà quá 5 giây chưa nhận được gì thì tắt GStreamer!
         auto now = std::chrono::steady_clock::now();
@@ -92,11 +95,27 @@ int main(int argc, char *argv[]) {
 
             // Kiểm tra lệnh từ Laptop
             if (packet.signal == 999) {
-                // Lưu IP và mã PIN để WebUI kiểm tra và cấp phép
-                JetsonRemote::pending_client_ip = sender_ip;
-                JetsonRemote::pairing_pin = packet.keycode; // Lấy mã PIN từ Client
+                // Ép kiểu ID Client trong gói tin thành strings để đảm bảo an toàn
+                std::string incoming_id(packet.device_id);
 
-                std::cout << "\n[*] Laptop (Client) " << sender_ip << " xin quyền Remote. Mã PIN của thiết bị là: " << packet.keycode << "\n";
+                // Nếu là thiết bị đã được cấp phép trong danh sách thì bỏ qua bước nhập PIN
+                if (JetsonRemote::trusted_devices.find(incoming_id) != JetsonRemote::trusted_devices.end()) {
+                    std::cout << "\n[+] Thiết bị có ID: " << incoming_id << " đã được cấp phép. Đang khởi động GStreamer...\n";
+                    
+                    JetsonRemote::pending_client_ip = "";
+                    JetsonRemote::pairing_pin = -1;
+                    JetsonRemote::target_ip = sender_ip; // Cập nhật lại IP
+                    JetsonRemote::restart_gstreamer();
+                    JetsonRemote::is_streaming = true;
+                    JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
+                } else {
+                    // Lưu IP và mã PIN để WebUI kiểm tra và cấp phép
+                    JetsonRemote::pending_client_ip = sender_ip;
+                    JetsonRemote::pairing_pin = packet.keycode; // Lấy mã PIN từ Client
+                    JetsonRemote::pending_device_id = incoming_id; // Lấy ID của thiết bị
+                    std::cout << "\n[*] Laptop (Client) " << sender_ip << " xin quyền Remote. Mã PIN của thiết bị: " << packet.keycode << " | ID của thiết bị: " << incoming_id << "\n";
+                }
+                continue;
             }
 
             // Lệnh ngắt kết nối từ Laptop
