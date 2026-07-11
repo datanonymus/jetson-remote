@@ -1,4 +1,4 @@
-# 🚀 Jetson Remote V2.0
+# 🚀 Jetson Remote V2.1.0
 **Ultra Low-Latency Hardware-Accelerated Remote Desktop & Monitoring for NVIDIA Jetson**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -6,7 +6,7 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
 ![Qt](https://img.shields.io/badge/Qt-6.x-41cd52.svg)
 
-Jetson Remote V2.0 is a custom-built, ultra-low-latency remote control, streaming, and monitoring solution designed specifically for Robotics Engineers working with ROS2 on NVIDIA Jetson edge devices (Jetson Nano, Xavier NX, Orin, etc.). 
+Jetson Remote V2.1.0 is a custom-built, ultra-low-latency remote control, streaming, and monitoring solution designed specifically for Robotics Engineers working with ROS2 on NVIDIA Jetson edge devices (Jetson Nano, Xavier NX, Orin, etc.). 
 
 By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jetson's native hardware encoder (`nvv4l2h264enc`) via UDP, this tool delivers real-time X11 desktop streaming and kernel-level mouse/keyboard injection.
 
@@ -16,6 +16,9 @@ By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jet
 * **Dynamic Resolution Auto-Sync:** The virtual mouse automatically grabs the current X11 display resolution and perfectly bounds the pointer without manual configuration.
 * **Full Mouse & ROS2 Support:** Complete integration of Left, Right, and **Middle-click** (essential for Rviz map panning) and Scroll Wheel.
 * **Zero-Lag Video Streaming:** Uses NVIDIA's NVMM (Hardware Acceleration) to compress and stream H.264 video directly over UDP.
+## ✨ What's New in V2.1.0:
+* **PIN Access and Save Client Info Function**: With the PIN Code Function, you can control who can access Jetson. Once you've granted access, you won't need to enter PIN Code on Web Server anymore.
+* **Fixed Some Problems**: Fixed some bugs that I found and added some Pop-ups to give you a better experiences.
 
 ## 🏗 Architecture
 This repository contains two main components:
@@ -83,6 +86,7 @@ sudo apt install -y \
 2. Build the project using the **Release** configuration.
 3. Run the application.
 4. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
+6. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
 5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
 
 ---
