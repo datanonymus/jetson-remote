@@ -27,6 +27,14 @@ public:
         emit frameUpdated(); // Báo cho giao diện biết có ảnh mới
     }
 
+    Q_INVOKABLE void resetResolution() {
+        if (m_width != 0 || m_height != 0) {
+            m_width = 0;
+            m_height = 0;
+        }
+        emit resolutionChanged();
+    }
+
 signals:
     void frameUpdated();
     void resolutionChanged();

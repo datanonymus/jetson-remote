@@ -13,7 +13,15 @@ Window {
     // Phím tắt để gọi lại hộp thoại đổi IP (Bấm Ctrl + I)
     Shortcut {
         sequence: "Ctrl+I"
-        onActivated: ipPopup.open()
+        onActivated: {
+            console.log("[*] Người dùng yêu cầu đổi IP. Đang gửi tín hiệu đóng GStreamer và reset các biến trạng thái...")
+            backend.sendSignal(998, 0, 0, 0)
+
+            watchdogTimer.stop()
+            loadingPopup.close()
+            pinPopup.close()
+            ipPopup.open()
+        }
     }
 
     Popup {
@@ -23,7 +31,7 @@ Window {
         modal: true
         focus: true
         anchors.centerIn: parent
-        closePolicy: Popup.CloseOnEscape
+        closePolicy: Popup.NoAutoClose
 
         background: Rectangle {
             color: "#222";
@@ -215,22 +223,62 @@ Window {
                     // Gửi IP xuống C++
                     backend.setTargetIp(ipInput.text)
 
-                    // Lấy kích thước màn hình hiện tại (Nếu chưa có thì ngầm định 1280x720)
-                    let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 1280
-                    let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 720
+                    let targetIp = ipInput.text
+                    let deviceId = backend.getDeviceId() // Lấy ID Client từ C++
 
-                    let dynamicPin = Math.floor(1000 + Math.random() * 9000);
-                    // Gọi đánh thức
-                    console.log("Đang gọi Jetson ở IP: " + ipInput.text + ". Mã PIN của bạn là: " + dynamicPin)
-                    backend.sendSignal(999, w, h, dynamicPin)
-
-                    // Màn hình chờ duyệt
-                    pinDisplay.text = dynamicPin.toString()
-                    copyBtn.text = "Copy"
-
-                    // Giấu Pop-up nhập IP, hiện Pop-up mã PIN lên
+                    // Giấu Pop-up nhập IP, hiện Pop-up loading
                     ipPopup.close()
-                    pinPopup.open()
+                    loadingPopup.open()
+                    loadingText.text = "Đang kiểm tra..."
+
+                    // Lấy thông tin từ Web Server
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("GET", "http://" + targetIp + ":8080/api/check_auth?id=" + deviceId, true)
+                    xhr.timeout = 5000;
+
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === XMLHttpRequest.DONE) {
+                            // Lấy kích thước màn hình hiện tại (Nếu chưa có thì ngầm định 0x0)
+                            let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 0
+                            let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 0
+
+                            let dynamicPin = Math.floor(1000 + Math.random() * 9000);
+                            console.log("Status xhr trả về: " + xhr.status)
+                            if (xhr.status === 200) {
+                                var response = JSON.parse(xhr.responseText);
+                                console.log("Status response trả về: " + response.status)
+                                // Nếu thiết bị nằm trong danh sách đã được cấp phép
+                                if (response.status === "trusted") {
+                                    console.log("[*] Thiết bị nằm trong danh sách đã được cấp phép!")
+                                    backend.setTargetIp(targetIp)
+                                    videoReceiver.resetResolution()
+                                    backend.sendSignal(999, w, h, dynamicPin)
+
+                                    loadingText.text = "Đã xác thực! Đang đợi luồng Video..."
+                                } else {
+                                    // Nếu thiết bị không nằm trong danh sách đã được cấp phép
+                                    console.log("[*] Thiết bị không nằm trong danh sách đã được cấp phép! Vui lòng cung cấp mã PIN cho Admin để được cấp quyền!")
+                                    backend.setTargetIp(targetIp)
+                                    videoReceiver.resetResolution()
+                                    backend.sendSignal(999, w, h, dynamicPin)
+
+                                    // Đóng Pop-up loading, mở Pop-up mã PIN
+                                    pinDisplay.text = dynamicPin.toString()
+                                    loadingPopup.close()
+                                    pinPopup.open()
+                                }
+                            } else {
+                                console.log("[!] Lỗi khi truy cập Web Server! Có vẻ Server bị sập rồi chăng?")
+
+                                // Chuyển cờ lỗi bên Pop-up loading sang true
+                                loadingPopup.isError = true
+                                loadingText.text = "Lỗi truy vấn! Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ với Admin để biết thêm thông tin."
+                            }
+                        }
+                    }
+
+                    xhr.send(); // Gửi lên Web Server
+
                     // Trả lại quyền điều khiển cho màn hình chính
                     //mainWindow.requestActivate()
                 }
@@ -241,6 +289,86 @@ Window {
     // Tự động mở hộp thoại Pop-up này khi App vừa bật lên!
     Component.onCompleted: {
         ipPopup.open()
+    }
+
+    Popup {
+        id: loadingPopup
+        width: 350
+        height: 200
+        modal: true
+        focus: true
+        anchors.centerIn: parent
+        closePolicy: Popup.NoAutoClose
+        background: Rectangle {
+            color: "#222";
+            radius: 8;
+            border.color: loadingPopup.isError ? "#ff4444" : "#ffaa00";
+            border.width: 2
+        }
+
+        // Biến trạng thái
+        property bool isError: false
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 15
+            width: parent.width - 40 // Chừa lề 2 bên 20px để chữ không dính sát viền
+
+            // Trạng thái Loading
+            BusyIndicator {
+                running: !loadingPopup.isError
+                visible: !loadingPopup.isError
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            // Trạng thái lỗi
+            Text {
+                text: "⚠️"
+                visible: loadingPopup.isError
+                color: "#ff4444"
+                font.pixelSize: 45
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            // Văn bản thông báo
+            Text {
+                id: loadingText
+                text: "Đang chờ Server xác nhận..."
+                color: loadingPopup.isError ? "#ff4444" : "#ffaa00";
+                font.pixelSize: 16
+                font.bold: true
+                anchors.horizontalCenter: parent.horizontalCenter
+                horizontalAlignment: Text.AlignHCenter
+
+                // Xuống dòng
+                wrapMode: Text.WordWrap
+                width: parent.width
+            }
+            // Nút Close & Nhập lại IP
+            Row {
+                spacing: 10
+                anchors.horizontalCenter: parent.horizontalCenter
+                Button {
+                    text: "Đóng"
+                    visible: loadingPopup.isError
+                    onClicked: loadingPopup.close()
+                }
+                Button {
+                    width: 160
+                    visible: loadingPopup.isError
+                    text: "Change IP Address"
+                    onClicked: {
+                        loadingPopup.close()
+                        ipPopup.open()
+                    }
+                }
+            }
+        }
+
+        // Reset biến trạng thái để tránh lỗi
+        onClosed: {
+            isError = false
+        }
     }
 
     // Màn hình hứng Video
@@ -257,14 +385,30 @@ Window {
         Connections {
             target: videoReceiver
             function onFrameUpdated() {
+                if (ipPopup.opened || loadingPopup.isError) {
+                    return;
+                }
                 videoFrame.counter++
                 watchdogTimer.restart()
             }
 
             function onResolutionChanged() {
+                if (videoReceiver.hostWidth === 0 || videoReceiver.hostHeight === 0) {
+                    console.log("[Debug] QML đã reset biến về 0, bỏ qua không xử lý nữa!")
+                    return
+                }
+
+                if (ipPopup.opened) {
+                    console.log("[DEBUG] Đang nhập IP, không nhận thêm frame nào nữa!")
+                    return
+                }
                 console.log("Phát hiện Jetson đổi phân giải: " + videoReceiver.hostWidth + "x" + videoReceiver.hostHeight)
-                // Lập tức nã gói tin cấu hình sang Jetson
+                // Gửi lệnh 777 cập nhật lưới chuột
                 backend.sendSignal(777, videoReceiver.hostWidth, videoReceiver.hostHeight, 0)
+                watchdogTimer.restart()
+                // Đóng Pop-up
+                loadingPopup.close()
+                pinPopup.close()
             }
         }
     }
@@ -274,14 +418,21 @@ Window {
         id: watchdogTimer
         interval: 5000 // 5000ms = 5 giây
         running: true
-        repeat: false // Chỉ chạy 1 lần nếu bị timeout
+        repeat: true
         onTriggered: {
+            if (ipPopup.opened) {
+                return;
+            }
             console.log("[!] Deadlock Detected! GStreamer đã bị lỗi. Gửi lệnh 888 để Reset...")
             // Dùng số 888 làm Magic Number ra lệnh Kill/Restart
             backend.sendSignal(888, 0, 0, 0)
+            videoReceiver.resetResolution()
+            loadingText.text = "Mất tín hiệu Video! Đang kết nối lại..."
+            loadingPopup.open()
         }
     }
 
+    // Watchdog giữ luồng lưới chuột cập nhật liên tục, không bị timeout
     Timer {
         id: keepAliveTimer
         interval: 1000

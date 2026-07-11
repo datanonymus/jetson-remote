@@ -4,7 +4,8 @@
 #include <QObject>
 #include <QUdpSocket>
 #include <QString>
-
+#include <QSettings>
+#include <QUuid>
 class UdpSender : public QObject
 {
     Q_OBJECT
@@ -16,11 +17,13 @@ public:
     Q_INVOKABLE void sendSignal(int signal, int width, int height, int pin);
 
     Q_INVOKABLE void sendKeyData(int keycode, int keystate);
+    Q_INVOKABLE QString getDeviceId() const {return QString(m_device_id);}
 
 private:
     QUdpSocket *m_socket;
     QString m_targetIp;
     int m_targetPort;
+    char m_device_id[32]; // Lưu ID của thiết bị
 };
 
 #endif // UDPSENDER_H
