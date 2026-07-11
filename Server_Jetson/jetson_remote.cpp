@@ -7,6 +7,8 @@ namespace JetsonRemote {
     std::string target_ip = "127.0.0.1"; 
     std::string target_bitrate = "8000000";
     std::string pending_client_ip = "";
+    std::set<std::string> trusted_devices;
+    std::string pending_device_id = "";
     int pairing_pin = -1;
     bool is_allowed = false; // Biến kiểm tra xem đã được cấp phép chưa
     bool is_streaming = false; // Biến cờ để đánh dấu trạng thái streaming
@@ -182,6 +184,26 @@ namespace JetsonRemote {
         return latest_tegrastats;
     }
 
+    // Đọc danh sách thiết bị khi vừa chạy lên
+    void load_trusted_devices() {
+        std::ifstream file("trusted_devices.txt");
+        std::string line;
+        while (std::getline(file, line)) {
+            if (!line.empty()) trusted_devices.insert(line);
+        }
+        std::cout << "[*] Đã tải " << trusted_devices.size() << " thiết bị đã lưu từ danh sách thiết bị.\n";
+    }
+
+    // Thêm Client mới vào danh sách
+    void add_trusted_device(const std::string& id) {
+        if (trusted_devices.find(id) == trusted_devices.end()) {
+            trusted_devices.insert(id);
+            std::ofstream file("trusted_devices.txt", std::ios::app); // Mở file ở chế độ append
+            file << id << "\n";
+            std::cout << "[+] Đã thêm Client \"" << id << "\" vào danh sách thiết bị" << "\n";
+        }
+    }
+
     // Web Server để hiển thị Dashboard trạng thái 
     void start_web_server() {
         httplib::Server svr;
@@ -211,6 +233,8 @@ namespace JetsonRemote {
                 if (entered_pin == pairing_pin && pairing_pin != -1) {
                     std::cout << "[+] Đã duyệt! Đang mở cổng cho Client " << pending_client_ip << "\n";
                     
+                    // Thêm thiết bị vào danh sách
+                    JetsonRemote::add_trusted_device(pending_device_id);
                     target_ip = pending_client_ip; // Gán IP chính thức
                     pending_client_ip = ""; // Xóa hàng chờ
                     pairing_pin = -1; // Hủy mã PIN cũ (để chống Replay attack)
@@ -246,9 +270,24 @@ namespace JetsonRemote {
             res.set_content(json_response, "application/json");
         });
 
+        // API 4: Kiểm tra thiết bị để gửi thông tin về QML
+        svr.Get("/api/check_auth", [](const httplib::Request& req, httplib::Response& res) {
+            if (req.has_param("id")) {
+                std::string id = req.get_param_value("id");
+
+                if (trusted_devices.find(id) != trusted_devices.end()) {
+                    res.set_content("{\"status\":\"trusted\"}", "application/json");
+                    return;
+                }
+            }
+            res.set_content("{\"status\":\"unknown\"}", "application/json");
+        });
+
         std::cout << "\n[+] Web Backend API đang chạy tại cổng 8080...\n";
         svr.listen("0.0.0.0", 8080);
     }
+
+    // Hàm ngắt GStreamer để tiết kiệm băng thông khi không có thiết bị kết nối
     void stop_gstreamer() {
         std::cout << "[!] Phát hiện mất kết nối. Đang tắt GStreamer để tiết kiệm điện...\n";
         if (system("if [ -f /tmp/jetson_remote_gst.pid ]; then kill -15 $(cat /tmp/jetson_remote_gst.pid) 2>/dev/null; rm /tmp/jetson_remote_gst.pid; fi") < 0) {/*Bỏ qua lỗi*/}
