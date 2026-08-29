@@ -91,6 +91,12 @@ set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 
 # GStreamer Plugins
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-ugly, gstreamer1.0-libav") 
+if(TARGET Qt6::Core)
+    # If build on Ubuntu 24.04/26.04 (Using Qt6)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-ugly, gstreamer1.0-libav, qml6-module-qtquick-controls, qml6-module-qtquick-window, qml6-module-qtmultimedia, qml6-module-qtquick-layouts")
+else()
+    # If build on Ubuntu 22.04 (Using Qt5)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-ugly, gstreamer1.0-libav, qml-module-qtquick-controls2, qml-module-qtquick-window2, qml-module-qtmultimedia, qml-module-qtquick-layouts")
+endif()
 
 include(CPack)
