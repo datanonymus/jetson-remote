@@ -89,6 +89,13 @@ sudo apt install -y \
 6. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
 5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
 
+### 3. For Windows:
+1. Just install already compiled app in Release tab
+2. Run the application.
+3. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
+4. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
+5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
+
 ---
 
 ## ⚠️ Known Limitations & Troubleshooting
@@ -96,4 +103,4 @@ sudo apt install -y \
 * **Keyboard Mapping (The "-8" Rule):** The Qt Client currently subtracts 8 from `nativeScanCode` to perfectly match X11/evdev mappings on Linux. Running the Qt Client on Windows may result in incorrect keystrokes.
 
 ---
-**Developed by Nguyễn Trọng Đạt**
+**Developed by Nguyễn Trọng Đạt (With Gemini support)**
