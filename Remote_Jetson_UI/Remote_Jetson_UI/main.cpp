@@ -58,10 +58,17 @@ static GstFlowReturn on_new_sample(GstElement *sink, VideoReceiver *receiver) {
 }
 
 int main(int argc, char *argv[]) {
-    gst_init(&argc, &argv);
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/logo.png"));
+
+    // Trỏ đường dẫn Plugin về "thư mục chứa file .exe/plugins"
+    #ifdef Q_OS_WIN
+        QString pluginPath = app.applicationDirPath() + "/plugins";
+        qputenv("GST_PLUGIN_PATH", pluginPath.toUtf8());
+    #endif
+
+    gst_init(&argc, &argv);
 
     UdpSender udpSender;
     VideoReceiver videoReceiver;

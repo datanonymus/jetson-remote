@@ -15,7 +15,7 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick LinguistTools Network Multim
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools Network Multimedia REQUIRED)
 # Tìm Gstreamer bằng PkgConfig
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST REQUIRED gstreamer-1.0 gstreamer-video-1.0 gstreamer-app-1.0)
+pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-video-1.0 gstreamer-app-1.0)
 
 set(TS_FILES Remote_Jetson_UI_vi_VN.ts)
 
@@ -60,7 +60,13 @@ endif()
 target_compile_definitions(Remote_Jetson_UI
   PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
 target_link_libraries(Remote_Jetson_UI
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::Network Qt${QT_VERSION_MAJOR}::Multimedia ${GST_LIBRARIES})
+  PRIVATE Qt${QT_VERSION_MAJOR}::Core
+  Qt${QT_VERSION_MAJOR}::Quick
+  Qt${QT_VERSION_MAJOR}::Network
+  Qt${QT_VERSION_MAJOR}::Multimedia
+  #${GST_LIBRARIES}
+  PkgConfig::GST
+)
 
 target_include_directories(Remote_Jetson_UI PRIVATE ${GST_INCLUDE_DIRS})
 
@@ -83,7 +89,7 @@ install(FILES logo.png DESTINATION share/pixmaps RENAME jetson-remote-logo.png)
 install(FILES jetson-remote.desktop DESTINATION share/applications)
 
 set(CPACK_PACKAGE_NAME "jetson-remote-ui")
-set(CPACK_PACKAGE_VERSION "2.1.0")
+set(CPACK_PACKAGE_VERSION "2.1.1")
 set(CPACK_PACKAGE_CONTACT "Nguyen Trong Dat")
 set(CPACK_GENERATOR "DEB")
 

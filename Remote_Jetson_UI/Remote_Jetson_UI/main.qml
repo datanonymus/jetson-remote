@@ -34,10 +34,23 @@ Window {
         closePolicy: Popup.NoAutoClose
 
         background: Rectangle {
-            color: "#222";
-            radius: 8;
-            border.color: "#00ff00";
+            // Hiệu ứng kính mờ: Nền đen với độ trong suốt 70%
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.85)
+            radius: 12
+            
+            // Viền mỏng, phát sáng nhẹ tùy theo trạng thái
+            border.color: "#00ff00" // Xanh lá
             border.width: 2
+            
+            // Đổ bóng (Lớp ảo)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                color: "transparent"
+                border.color: Qt.rgba(1.0, 1.0, 1.0, 0.1)
+                border.width: 1
+                radius: 11
+            }
         }
         Column {
             anchors.centerIn: parent;
@@ -162,10 +175,23 @@ Window {
 
         // Thiết kế background cho cái hộp thoại
         background: Rectangle {
-            color: "#2b2b2b"
-            radius: 10
-            border.color: "#444444"
+            // Hiệu ứng kính mờ: Nền đen với độ trong suốt 70%
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.85)
+            radius: 12
+            
+            // Viền mỏng, phát sáng nhẹ tùy theo trạng thái
+            border.color: "#00cccc" // Xanh Cyan
             border.width: 2
+            
+            // Đổ bóng (Lớp ảo)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                color: "transparent"
+                border.color: Qt.rgba(1.0, 1.0, 1.0, 0.1)
+                border.width: 1
+                radius: 11
+            }
         }
 
         Column {
@@ -300,10 +326,23 @@ Window {
         anchors.centerIn: parent
         closePolicy: Popup.NoAutoClose
         background: Rectangle {
-            color: "#222";
-            radius: 8;
-            border.color: loadingPopup.isError ? "#ff4444" : "#ffaa00";
+            // Hiệu ứng kính mờ: Nền đen với độ trong suốt 70%
+            color: Qt.rgba(0.1, 0.1, 0.1, 0.85)
+            radius: 12
+            
+            // Viền mỏng, phát sáng nhẹ tùy theo trạng thái
+            border.color: loadingPopup.isError ? "#ff4444" : "#ffaa00" // Xanh Cyan bán trong suốt
             border.width: 2
+            
+            // Đổ bóng (Lớp ảo)
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                color: "transparent"
+                border.color: Qt.rgba(1.0, 1.0, 1.0, 0.1)
+                border.width: 1
+                radius: 11
+            }
         }
 
         // Biến trạng thái
@@ -500,7 +539,8 @@ Window {
         Keys.onPressed: (event) => {
             // Chặn spam liên tục khi nhấn giữ 1 phím
             if (!event.isAutoRepeat) {
-                backend.sendKeyData(event.nativeScanCode - 8, 1)
+                let finalCode = (Qt.platform.os === "windows") ? event.nativeScanCode : (event.nativeScanCode - 8)
+                backend.sendKeyData(finalCode, 1)
             }
             event.accepted = true
         }
@@ -508,7 +548,8 @@ Window {
         // Khi phím được nhả ra
         Keys.onReleased: (event) => {
             if (!event.isAutoRepeat) {
-                backend.sendKeyData(event.nativeScanCode - 8, 0)
+                let finalCode = (Qt.platform.os === "windows") ? event.nativeScanCode : (event.nativeScanCode - 8)
+                backend.sendKeyData(finalCode, 0)
             }
             event.accepted = true
         }
