@@ -54,6 +54,23 @@ Once the server is running, open any web browser on your network and navigate to
 
 ## 💻 2. Client UI Setup
 
+### 1. For Ubuntu (Ubuntu 22.04, Ubuntu 24.04 and Ubuntu 26.04):
+1. Download .deb file depend on Ubuntu version from the Release tab
+2. Install .deb file using command: sudo apt install ./<filename>.deb
+3. Run the application
+4. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
+5. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
+6. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
+
+### 2. For Windows:
+1. Just install already compiled app in Release tab
+2. Run the application.
+3. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
+4. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
+5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
+
+## 💻 3. For Developer Setup:
+
 ### Prerequisites
 You need a standard Linux distribution with Qt5 or Qt6 development packages installed.
 
@@ -88,13 +105,6 @@ sudo apt install -y \
 3. Run the application.
 4. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
 6. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
-5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
-
-### 3. For Windows:
-1. Just install already compiled app in Release tab
-2. Run the application.
-3. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
-4. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
 5. If you want to change IP Address without quit and run the app again, press `Ctrl + I` (or click the UI) to open the connection popup.
 
 ---
