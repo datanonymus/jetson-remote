@@ -7,6 +7,7 @@
 #include "udpsender.h" // Thêm Header
 #include <stdlib.h>
 #include "videoreceiver.h"
+#include <QIcon>
 
 // Lớp này dùng để đưa ảnh QImage từ C++ sang cho QML vẽ
 class LiveImageProvider : public QQuickImageProvider {
@@ -60,6 +61,7 @@ int main(int argc, char *argv[]) {
     gst_init(&argc, &argv);
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication app(argc, argv);
+    app.setWindowIcon(QIcon(":/logo.png"));
 
     UdpSender udpSender;
     VideoReceiver videoReceiver;
