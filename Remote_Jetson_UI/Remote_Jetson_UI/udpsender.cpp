@@ -28,9 +28,9 @@ UdpSender::UdpSender(QObject *parent)
     if (deviceId.isEmpty()) {
         deviceId = "LAPTOP-" + QUuid::createUuid().toString(QUuid::WithoutBraces).left(6).toUpper();
         settings.setValue("device_id", deviceId);
-        qDebug() << "[*] Phát hiện thiết bị mới. Cấp ID: " << deviceId << " cho Client.";
+        qDebug() << "[*] New device detected. Assigned ID: " << deviceId << " for Client.";
     } else {
-        qDebug() << "[*] Load ID Client thành công. ID của thiết bị là: " << deviceId;
+        qDebug() << "[*] Client ID loaded successfully! Device ID is: " << deviceId;
     }
 
     std::strncpy(m_device_id, deviceId.toStdString().c_str(), 31);

@@ -1,6 +1,6 @@
-import QtQuick 2.15
-import QtQuick.Window 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Window
+import QtQuick.Controls
 
 Window {
     id: mainWindow
@@ -14,7 +14,7 @@ Window {
     Shortcut {
         sequence: "Ctrl+I"
         onActivated: {
-            console.log("[*] Người dùng yêu cầu đổi IP. Đang gửi tín hiệu đóng GStreamer và reset các biến trạng thái...")
+            console.log("[*] User required change IP. Sending signal to close GStreamer and resetting state variables...")
             backend.sendSignal(998, 0, 0, 0)
 
             watchdogTimer.stop()
@@ -43,14 +43,14 @@ Window {
             anchors.centerIn: parent;
             spacing: 15;
             Text {
-                text: "Phát hiện thiết bị mới!"
+                text: "New device detected!"
                 color: "#fff";
                 font.bold: true;
                 font.pixelSize: 16;
                 anchors.horizontalCenter: parent.horizontalCenter
             }
             Text {
-                text: "Vui lòng cung cấp mã PIN này cho Admin:"
+                text: "Please provide this PIN to the Admin:"
                 color: "#aaa"
                 font.pixelSize: 15
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -152,7 +152,7 @@ Window {
         closePolicy: Popup.CloseOnEscape // Bấm Esc để tắt
 
         onClosed: {
-            console.log("[*] Pop-up đã đóng. Trả lại quyền nhập liệu cho màn hình chính!")
+            console.log("[*] Pop-up closed. Return input permission for main screen!")
             mainArea.forceActiveFocus() // ÉP màn hình chính cầm lại quyền!
         }
 
@@ -229,7 +229,7 @@ Window {
                     // Giấu Pop-up nhập IP, hiện Pop-up loading
                     ipPopup.close()
                     loadingPopup.open()
-                    loadingText.text = "Đang kiểm tra..."
+                    loadingText.text = "Verifying..."
 
                     // Lấy thông tin từ Web Server
                     var xhr = new XMLHttpRequest();
@@ -243,21 +243,21 @@ Window {
                             let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 0
 
                             let dynamicPin = Math.floor(1000 + Math.random() * 9000);
-                            console.log("Status xhr trả về: " + xhr.status)
+                            console.log("Status xhr return: " + xhr.status)
                             if (xhr.status === 200) {
                                 var response = JSON.parse(xhr.responseText);
-                                console.log("Status response trả về: " + response.status)
+                                console.log("Status response return: " + response.status)
                                 // Nếu thiết bị nằm trong danh sách đã được cấp phép
                                 if (response.status === "trusted") {
-                                    console.log("[*] Thiết bị nằm trong danh sách đã được cấp phép!")
+                                    console.log("[*] The device is on the permitted list!")
                                     backend.setTargetIp(targetIp)
                                     videoReceiver.resetResolution()
                                     backend.sendSignal(999, w, h, dynamicPin)
 
-                                    loadingText.text = "Đã xác thực! Đang đợi luồng Video..."
+                                    loadingText.text = "Authenticated! Waiting for the Video stream..."
                                 } else {
                                     // Nếu thiết bị không nằm trong danh sách đã được cấp phép
-                                    console.log("[*] Thiết bị không nằm trong danh sách đã được cấp phép! Vui lòng cung cấp mã PIN cho Admin để được cấp quyền!")
+                                    console.log("[*] The device isn't on the permitted list! Please provide the PIN to administrator to grant permission!")
                                     backend.setTargetIp(targetIp)
                                     videoReceiver.resetResolution()
                                     backend.sendSignal(999, w, h, dynamicPin)
@@ -268,11 +268,11 @@ Window {
                                     pinPopup.open()
                                 }
                             } else {
-                                console.log("[!] Lỗi khi truy cập Web Server! Có vẻ Server bị sập rồi chăng?")
+                                console.log("[!] An error occured while accessing the Server! Has the server gone down?")
 
                                 // Chuyển cờ lỗi bên Pop-up loading sang true
                                 loadingPopup.isError = true
-                                loadingText.text = "Lỗi truy vấn! Vui lòng kiểm tra lại kết nối mạng hoặc liên hệ với Admin để biết thêm thông tin."
+                                loadingText.text = "Query error! Please check your network connection or contact the administrator for more information."
                             }
                         }
                     }
@@ -333,7 +333,7 @@ Window {
             // Văn bản thông báo
             Text {
                 id: loadingText
-                text: "Đang chờ Server xác nhận..."
+                text: "Waiting for Server response..."
                 color: loadingPopup.isError ? "#ff4444" : "#ffaa00";
                 font.pixelSize: 16
                 font.bold: true
@@ -349,7 +349,8 @@ Window {
                 spacing: 10
                 anchors.horizontalCenter: parent.horizontalCenter
                 Button {
-                    text: "Đóng"
+                    width: 100
+                    text: "Close"
                     visible: loadingPopup.isError
                     onClicked: loadingPopup.close()
                 }
@@ -394,15 +395,15 @@ Window {
 
             function onResolutionChanged() {
                 if (videoReceiver.hostWidth === 0 || videoReceiver.hostHeight === 0) {
-                    console.log("[Debug] QML đã reset biến về 0, bỏ qua không xử lý nữa!")
+                    console.log("[Debug] QML resetted the variable to 0, skipped further processing!")
                     return
                 }
 
                 if (ipPopup.opened) {
-                    console.log("[DEBUG] Đang nhập IP, không nhận thêm frame nào nữa!")
+                    console.log("[DEBUG] User is entering IP, no longer receiving any frame!")
                     return
                 }
-                console.log("Phát hiện Jetson đổi phân giải: " + videoReceiver.hostWidth + "x" + videoReceiver.hostHeight)
+                console.log("Detected Jetson changed resolution: " + videoReceiver.hostWidth + "x" + videoReceiver.hostHeight)
                 // Gửi lệnh 777 cập nhật lưới chuột
                 backend.sendSignal(777, videoReceiver.hostWidth, videoReceiver.hostHeight, 0)
                 watchdogTimer.restart()
@@ -423,11 +424,11 @@ Window {
             if (ipPopup.opened) {
                 return;
             }
-            console.log("[!] Deadlock Detected! GStreamer đã bị lỗi. Gửi lệnh 888 để Reset...")
+            console.log("[!] Deadlock Detected! GStreamer has occured an error. Sending 888 signal to reset...")
             // Dùng số 888 làm Magic Number ra lệnh Kill/Restart
             backend.sendSignal(888, 0, 0, 0)
             videoReceiver.resetResolution()
-            loadingText.text = "Mất tín hiệu Video! Đang kết nối lại..."
+            loadingText.text = "Lost Video signal! Reconnecting..."
             loadingPopup.open()
         }
     }
@@ -515,7 +516,7 @@ Window {
 
     // BẪY SỰ KIỆN: Khi người dùng bấm nút X tắt cửa sổ
     onClosing: {
-        console.log("[!] Đang đóng app, gửi lệnh khai tử 998 cho Jetson...")
+        console.log("[!] Closing, sending 998 signal for Jetson...")
         // Ném lệnh 998 đi trước khi hệ thống kịp giết app (x, y, pin lúc này truyền 0)
         backend.sendSignal(998, 0, 0, 0)
     }
