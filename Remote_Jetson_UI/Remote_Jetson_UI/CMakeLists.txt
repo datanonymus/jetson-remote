@@ -79,6 +79,8 @@ endif()
 
 # .deb Build configs
 install(TARGETS Remote_Jetson_UI DESTINATION bin)
+install(FILES logo.png DESTINATION share/pixmaps RENAME jetson-remote-logo.png)
+install(FILES jetson-remote.desktop DESTINATION share/applications)
 
 set(CPACK_PACKAGE_NAME "jetson-remote-ui")
 set(CPACK_PACKAGE_VERSION "2.1.0")
