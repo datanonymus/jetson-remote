@@ -23,7 +23,7 @@ By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jet
 ## 🏗 Architecture
 This repository contains two main components:
 * `Server_Jetson/`: The C++ UDP Server & Web API running on the NVIDIA Jetson.
-* `Client_UI/`: The Qt5/Qt6/QML Client App running on your Host PC (Linux).
+* `Remote_Jetson_UI/`: The Qt5/Qt6/QML Client App running on your Host PC (Linux).
 
 ---
 
