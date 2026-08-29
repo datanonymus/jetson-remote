@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake ../Remote_Jetson_UI -DCMAKE_BUILD_TYPE=Release
+          cmake ../Remote_Jetson_UI/Remote_Jetson_UI -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project
         run: |
