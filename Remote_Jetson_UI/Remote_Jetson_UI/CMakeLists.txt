@@ -26,6 +26,7 @@ set(PROJECT_SOURCES
         udpsender.cpp
         videoreceiver.h
         videoreceiver.cpp
+        app_icon.rc
         ${TS_FILES}
 )
 
