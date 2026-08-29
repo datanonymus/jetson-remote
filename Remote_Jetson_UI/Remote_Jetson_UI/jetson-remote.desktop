@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Jetson Remote
+Comment=Bring Jetson's screen into your hand!
+Exec=Remote_Jetson_UI
+Icon=jetson-remote-logo
+Terminal=false
+Type=Application
+Categories=Development;Utility;
