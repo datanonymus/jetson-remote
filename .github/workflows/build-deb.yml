@@ -13,20 +13,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Qt5 Dependencies (Ubuntu 20.04 & 22.04)
-        if: matrix.os == 'ubuntu-20.04' || matrix.os == 'ubuntu-22.04'
+      - name: Install Qt5 Dependencies (Ubuntu 22.04)
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt update
           sudo apt install -y build-essential cmake ninja-build qtbase5-dev qtdeclarative5-dev qttools5-dev qttools5-dev-tools qml-module-qtquick-controls2 qml-module-qtquick-window2 qml-module-qtmultimedia libqt5multimedia5-plugins qtmultimedia5-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-qt5 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libunwind-dev
 
       - name: Install Qt6 Dependencies (Ubuntu 24.04)
-        if: matrix.os == 'ubuntu-24.04'
+        if: matrix.os == 'ubuntu-24.04' || matrix.os == 'ubuntu-26.04'
         run: |
           sudo apt update
           sudo apt install -y build-essential cmake ninja-build qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools qt6-multimedia-dev qml6-module-qtmultimedia qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-qt6 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libunwind-dev
