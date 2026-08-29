@@ -75,3 +75,19 @@ if(QT_VERSION_MAJOR EQUAL 6)
     qt_import_qml_plugins(Remote_Jetson_UI)
     qt_finalize_executable(Remote_Jetson_UI)
 endif()
+
+# .deb Build configs
+install(TARGETS Remote_Jetson_UI DESTINATION bin)
+
+set(CPACK_PACKAGE_NAME "jetson-remote-ui")
+set(CPACK_PACKAGE_VERSION "2.1.0")
+set(CPACK_PACKAGE_CONTACT "Nguyen Trong Dat")
+set(CPACK_GENERATOR "DEB")
+
+# Auto-detect main library
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+# GStreamer Plugins
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-ugly, gstreamer1.0-libav") 
+
+include(CPack)
