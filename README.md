@@ -1,5 +1,5 @@
 ![Jetson Remote Banner](Official_Banner.png)
-# 🚀 Jetson Remote V2.1.0
+# 🚀 Jetson Remote V2.1.1
 **Ultra Low-Latency Hardware-Accelerated Remote Desktop & Monitoring for NVIDIA Jetson**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -7,7 +7,7 @@
 ![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
 ![Qt](https://img.shields.io/badge/Qt-6.x-41cd52.svg)
 
-Jetson Remote V2.1.0 is a custom-built, ultra-low-latency remote control, streaming, and monitoring solution designed specifically for Robotics Engineers working with ROS2 on NVIDIA Jetson edge devices (Jetson Nano, Xavier NX, Orin, etc.). 
+Jetson Remote is a custom-built, ultra-low-latency remote control, streaming, and monitoring solution designed specifically for Robotics Engineers working with ROS2 on NVIDIA Jetson edge devices (Jetson Nano, Xavier NX, Orin, etc.). 
 
 By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jetson's native hardware encoder (`nvv4l2h264enc`) via UDP, this tool delivers real-time X11 desktop streaming and kernel-level mouse/keyboard injection.
 
@@ -20,6 +20,10 @@ By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jet
 ## ✨ What's New in V2.1.0:
 * **PIN Access and Save Client Info Function**: With the PIN Code Function, you can control who can access Jetson. Once you've granted access, you won't need to enter PIN Code on Web Server anymore.
 * **Fixed Some Problems**: Fixed some bugs that I found and added some Pop-ups to give you a better experiences.
+## ✨ What's New in V2.1.1:
+* **Add Support for Windows**: Now you can install this application into Windows, using pre-compiled .exe file in Release tab
+* **Add .deb installer for Ubuntu**: Easy to install this application without build it again anymore!
+* **Enhanced UI Design**: Change language into English, and add some "topping" for better UI experience!
 
 ## 🏗 Architecture
 This repository contains two main components:
@@ -56,7 +60,7 @@ Once the server is running, open any web browser on your network and navigate to
 
 ### 1. For Ubuntu (Ubuntu 22.04, Ubuntu 24.04 and Ubuntu 26.04):
 1. Download .deb file depend on Ubuntu version from the Release tab
-2. Install .deb file using command: sudo apt install ./<filename>.deb
+2. Install .deb file using command: ```sudo apt install ./<filename>.deb```
 3. Run the application
 4. Enter your Jetson's IP Address (LAN or VPN like Tailscale) and click **Connect**.
 5. If you enter the server for the first time, a PIN Pop-up will display to give you a PIN code. Copy it and send to Admin server to grant access.
