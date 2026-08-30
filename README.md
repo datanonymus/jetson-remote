@@ -115,7 +115,6 @@ sudo apt install -y \
 
 ## ⚠️ Known Limitations & Troubleshooting
 * **NVIDIA 40" Headless Bug:** If you boot the Jetson without an HDMI monitor attached, Nvidia's driver defaults to a locked 720p virtual display and display the NVIDIA logo, never enter the desktop. **Solution:** Use an HDMI Dummy Plug to emulate display.
-* **Keyboard Mapping (The "-8" Rule):** The Qt Client currently subtracts 8 from `nativeScanCode` to perfectly match X11/evdev mappings on Linux. Running the Qt Client on Windows may result in incorrect keystrokes.
 
 ---
 **Developed by Nguyễn Trọng Đạt (With Gemini support)**
