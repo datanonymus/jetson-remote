@@ -2,6 +2,27 @@
 #include <QNetworkDatagram>
 #include <QDebug>
 #include <cstring>
+#include <openssl/evp.h>
+
+// Khóa tĩnh 16-byte
+const unsigned char AES_KEY[20] = "DATANONYMUS_KEY_123";
+const unsigned char AES_IV[20]  = "DATANONYMUS_IV_4567";
+
+// Hàm thực thi AES-128-CTR (is_encrypt = 1 là Mã hóa, 0 là Giải mã)
+int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, int is_encrypt) {
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    int len = 0;
+    int out_len = 0;
+    
+    EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, AES_KEY, AES_IV, is_encrypt);
+    EVP_CipherUpdate(ctx, out_data, &len, in_data, in_len);
+    out_len = len;
+    EVP_CipherFinal_ex(ctx, out_data + len, &len);
+    out_len += len;
+    
+    EVP_CIPHER_CTX_free(ctx);
+    return out_len;
+}
 
 // Cấu trúc gói tin y hệt Jetson
 struct MouseAndKeyboardPacket {
@@ -58,9 +79,13 @@ void UdpSender::sendMouseData(int x, int y, int click, int scroll)
     std::strncpy(packet.device_id, m_device_id, 31);
     packet.device_id[31] = '\0';
 
+    unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
+
+    process_aes_ctr(reinterpret_cast<const unsigned char*>(&packet), sizeof(packet), encrypted_buffer, 1);
+
     // Đóng gói và gửi sang Jetson bằng m_targetIp
-    m_socket->writeDatagram(reinterpret_cast<const char*>(&packet),
-                            sizeof(MouseAndKeyboardPacket),
+    m_socket->writeDatagram(reinterpret_cast<const char*>(encrypted_buffer),
+                            sizeof(encrypted_buffer),
                             QHostAddress(m_targetIp),
                             m_targetPort);
 }
@@ -80,9 +105,13 @@ void UdpSender::sendSignal(int signal, int width, int height, int pin)
     std::strncpy(packet.device_id, m_device_id, 31);
     packet.device_id[31] = '\0';
 
+    unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
+
+    process_aes_ctr(reinterpret_cast<const unsigned char*>(&packet), sizeof(packet), encrypted_buffer, 1);
+
     // Đóng gói và gửi sang Jetson bằng m_targetIp
-    m_socket->writeDatagram(reinterpret_cast<const char*>(&packet),
-                            sizeof(MouseAndKeyboardPacket),
+    m_socket->writeDatagram(reinterpret_cast<const char*>(encrypted_buffer),
+                            sizeof(encrypted_buffer),
                             QHostAddress(m_targetIp),
                             m_targetPort);
 }
@@ -100,8 +129,12 @@ void UdpSender::sendKeyData(int keycode, int keystate) {
     std::strncpy(packet.device_id, m_device_id, 31);
     packet.device_id[31] = '\0';
 
-    m_socket->writeDatagram(reinterpret_cast<const char*>(&packet),
-                            sizeof(MouseAndKeyboardPacket),
+    unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
+
+    process_aes_ctr(reinterpret_cast<const unsigned char*>(&packet), sizeof(packet), encrypted_buffer, 1);
+
+    m_socket->writeDatagram(reinterpret_cast<const char*>(encrypted_buffer),
+                            sizeof(encrypted_buffer),
                             QHostAddress(m_targetIp),
                             m_targetPort);
 }

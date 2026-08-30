@@ -6,6 +6,7 @@
 #include <QString>
 #include <QSettings>
 #include <QUuid>
+
 class UdpSender : public QObject
 {
     Q_OBJECT

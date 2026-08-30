@@ -15,7 +15,7 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick LinguistTools Network Multim
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools Network Multimedia REQUIRED)
 # Tìm Gstreamer bằng PkgConfig
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-video-1.0 gstreamer-app-1.0)
+pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-video-1.0 gstreamer-app-1.0 libcrypto)
 
 set(TS_FILES Remote_Jetson_UI_vi_VN.ts)
 

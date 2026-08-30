@@ -19,6 +19,7 @@
 #include "httplib.h"
 #include <set>
 #include <string>
+#include <openssl/evp.h>
 
 // Định nghĩa gói tin
 struct MouseAndKeyboardPacket {
@@ -46,6 +47,10 @@ namespace JetsonRemote {
     extern std::set<std::string> trusted_devices;
     extern std::string pending_device_id; // Nhớ lại xem thiết bị lạ nào đang xin cấp quyền
 
+    // Khóa tĩnh 16-byte
+    extern const unsigned char AES_KEY[16]; 
+    extern const unsigned char AES_IV[16];
+
     // Khai báo các hàm sẽ dùng
     void init_virtual_mouse(int width, int height);
     void cleanup_and_exit(int signum);
@@ -59,5 +64,6 @@ namespace JetsonRemote {
     // 2 hàm quản lý Sổ
     void load_trusted_devices();
     void add_trusted_device(const std::string& id);
+    int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, int is_encrypt);
 }
 #endif // JETSON_REMOTE_HPP

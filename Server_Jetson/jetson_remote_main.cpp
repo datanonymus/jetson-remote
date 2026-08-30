@@ -81,7 +81,12 @@ int main(int argc, char *argv[]) {
             JetsonRemote::is_streaming = false;
         }
 
-        if (recvfrom(sock, &packet, sizeof(MouseAndKeyboardPacket), 0, (struct sockaddr *)&client_addr, &client_len) > 0) {
+        unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
+
+        if (recvfrom(sock, encrypted_buffer, sizeof(encrypted_buffer), 0, (struct sockaddr *)&client_addr, &client_len) > 0) {
+            // Giải mã gói tin
+            JetsonRemote::process_aes_ctr(encrypted_buffer, sizeof(encrypted_buffer), reinterpret_cast<unsigned char*>(&packet), 0);
+
             // Debug gói tin nhận được
             //std::cout << "Nhận được: x: " << packet.x << " | y: " << packet.y 
             //          << " | click: " << packet.click << " | scroll: " << packet.scroll 
