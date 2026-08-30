@@ -48,8 +48,8 @@ namespace JetsonRemote {
     extern std::string pending_device_id; // Nhớ lại xem thiết bị lạ nào đang xin cấp quyền
 
     // Khóa tĩnh 16-byte
-    extern const unsigned char AES_KEY[16]; 
-    extern const unsigned char AES_IV[16];
+    extern const unsigned char AES_KEY[20]; 
+    extern const unsigned char AES_IV[20];
 
     // Khai báo các hàm sẽ dùng
     void init_virtual_mouse(int width, int height);
