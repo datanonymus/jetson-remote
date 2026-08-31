@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
                 const unsigned char* dynamic_key = reinterpret_cast<const unsigned char*>(JetsonRemote::trusted_devices[incoming_id].c_str());
                 
                 // 3. Giải mã 32 byte đầu tiên bằng Khóa định danh và IV đính kèm gói tin
-                process_aes_ctr(encrypted_buffer, 32, encrypted_buffer, dynamic_key, incoming_iv, 0);
+                JetsonRemote::process_aes_ctr(encrypted_buffer, 32, encrypted_buffer, dynamic_key, incoming_iv, 0);
                 
                 // 4. Trả lại dữ liệu sạch cho Struct để OS xử lý
                 memcpy(&packet, encrypted_buffer, sizeof(MouseAndKeyboardPacket));
