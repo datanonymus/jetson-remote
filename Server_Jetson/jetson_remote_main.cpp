@@ -70,6 +70,8 @@ int main(int argc, char *argv[]) {
 
     // Khởi tạo toàn bộ danh sách các thiết bị
     JetsonRemote::load_trusted_devices();
+    std::string cached_device_id = "";
+    const unsigned char* cached_aes_key = nullptr;
 
     while (true) {
         // Kiểm tra Timeout: Nếu đang stream mà quá 5 giây chưa nhận được gì thì tắt GStreamer!
@@ -87,16 +89,21 @@ int main(int argc, char *argv[]) {
 
             MouseAndKeyboardPacket* temp_ptr = reinterpret_cast<MouseAndKeyboardPacket*>(encrypted_buffer);
             
-            // Đọc trần ID và IV từ phần đuôi gói tin
-            std::string incoming_id(temp_ptr->device_id);
+            // Đọc trần IV từ phần đuôi gói tin
             unsigned char* incoming_iv = reinterpret_cast<unsigned char*>(temp_ptr->iv);
-
-            // Lục sổ xem thiết bị này có Khóa chưa
-            if (JetsonRemote::trusted_devices.find(incoming_id) != JetsonRemote::trusted_devices.end()) {
-                const unsigned char* dynamic_key = reinterpret_cast<const unsigned char*>(JetsonRemote::trusted_devices[incoming_id].c_str());
-                
+            if (cached_device_id.empty() || std::strncmp(temp_ptr->device_id, cached_device_id.c_str(), 32) != 0) {
+                std::string incoming_id(temp_ptr->device_id);
+                // Lục sổ xem thiết bị này có Khóa chưa
+                if (JetsonRemote::trusted_devices.find(incoming_id) != JetsonRemote::trusted_devices.end()) {
+                    cached_device_id = incoming_id; // Lưu ID vào Cache
+                    cached_aes_key = reinterpret_cast<const unsigned char*>(it->second.c_str()); // Lưu Key vào Cache
+                } else {
+                    cached_aes_key = nullptr; // Thiết bị lạ, từ chối cấp Key
+                }
+            }
+            if (cached_aes_key != nullptr) {
                 // Giải mã 32 byte đầu tiên bằng Khóa định danh và IV đính kèm gói tin
-                JetsonRemote::process_aes_ctr(encrypted_buffer, 32, encrypted_buffer, dynamic_key, incoming_iv, 0);
+                JetsonRemote::process_aes_ctr(encrypted_buffer, 32, encrypted_buffer, cached_aes_key, incoming_iv, 0);
             }
 
             // Trả lại dữ liệu sạch cho Struct để OS xử lý
