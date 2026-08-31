@@ -271,7 +271,7 @@ namespace JetsonRemote {
                 std::cout << "[DEBUG] WebUI nhập PIN: " << entered_pin << " | Jetson đang chờ PIN: " << pairing_pin << "\n";
 
                 // Nếu khớp pin và đang có Client xin vào
-                if (received_hash == expected_hash && entered_pin == pairing_pin && pairing_pin != -1) {
+                if (entered_pin == pairing_pin && pairing_pin != -1) {
                     // Sinh khóa mã hóa 16-byte
                     std::string new_aes_key = generate_aes_key();
                     
