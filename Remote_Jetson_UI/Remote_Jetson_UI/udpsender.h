@@ -6,10 +6,18 @@
 #include <QString>
 #include <QSettings>
 #include <QUuid>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 class UdpSender : public QObject
 {
     Q_OBJECT
+signals:
+    // Signal báo cáo kết quả về cho QML ("trusted", "unknown", hoặc "error")
+    void authStatusReceived(QString status);
 public:
     explicit UdpSender(QObject *parent = nullptr);
 
@@ -20,9 +28,13 @@ public:
     Q_INVOKABLE void sendKeyData(int keycode, int keystate);
     Q_INVOKABLE QString getDeviceId() const {return QString(m_device_id);}
 
+    Q_INVOKABLE void checkAndFetchKey(QString target_ip, QString my_device_id);
+    Q_INVOKABLE void clearAesKey();
+
 private:
     QUdpSocket *m_socket;
     QString m_targetIp;
+    QByteArray m_currentAesKey; // Biến lưu Key của Client đang bật hiện tại
     int m_targetPort;
     char m_device_id[32]; // Lưu ID của thiết bị
 };

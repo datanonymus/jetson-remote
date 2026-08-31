@@ -84,8 +84,23 @@ int main(int argc, char *argv[]) {
         unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
 
         if (recvfrom(sock, encrypted_buffer, sizeof(encrypted_buffer), 0, (struct sockaddr *)&client_addr, &client_len) > 0) {
-            // Giải mã gói tin
-            JetsonRemote::process_aes_ctr(encrypted_buffer, sizeof(encrypted_buffer), reinterpret_cast<unsigned char*>(&packet), 0);
+
+            MouseAndKeyboardPacket* temp_ptr = reinterpret_cast<MouseAndKeyboardPacket*>(encrypted_buffer);
+            
+            // Đọc trần ID và IV từ phần đuôi gói tin
+            std::string incoming_id(temp_ptr->device_id);
+            unsigned char* incoming_iv = reinterpret_cast<unsigned char*>(temp_ptr->iv);
+
+            // Lục sổ xem thiết bị này có Khóa chưa
+            if (JetsonRemote::trusted_devices.find(incoming_id) != JetsonRemote::trusted_devices.end()) {
+                const unsigned char* dynamic_key = reinterpret_cast<const unsigned char*>(JetsonRemote::trusted_devices[incoming_id].c_str());
+                
+                // 3. Giải mã 32 byte đầu tiên bằng Khóa định danh và IV đính kèm gói tin
+                process_aes_ctr(encrypted_buffer, 32, encrypted_buffer, dynamic_key, incoming_iv, 0);
+                
+                // 4. Trả lại dữ liệu sạch cho Struct để OS xử lý
+                memcpy(&packet, encrypted_buffer, sizeof(MouseAndKeyboardPacket));
+            }
 
             // Debug gói tin nhận được
             //std::cout << "Nhận được: x: " << packet.x << " | y: " << packet.y 
@@ -170,7 +185,6 @@ int main(int argc, char *argv[]) {
             // Nếu chưa được cấu hình mà đã nhận data chuột thì bỏ qua
             if (JetsonRemote::uinput_fd < 0) continue;
 
-            // Mở khối khóa an toàn
             {
                 std::lock_guard<std::mutex> lock(JetsonRemote::mouse_mtx);
 
@@ -186,7 +200,7 @@ int main(int argc, char *argv[]) {
                     JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_X, packet.x);
                     JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_Y, packet.y);
 
-                    // Bắn Click chuẩn bài của Linux
+                    // Bắn phím chuột
                     if (packet.click == 1) {
                         JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 1); // Giữ chuột trái
                     } else if (packet.click == 2) {
@@ -206,7 +220,6 @@ int main(int argc, char *argv[]) {
                     JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_SYN, SYN_REPORT, 0);
                 }
             }
-            // Đóng khối khóa an toàn
         }
     }
     ioctl(JetsonRemote::uinput_fd, UI_DEV_DESTROY);

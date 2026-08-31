@@ -20,6 +20,8 @@
 #include <set>
 #include <string>
 #include <openssl/evp.h>
+#include <random>
+#include <map>
 
 // Định nghĩa gói tin
 struct MouseAndKeyboardPacket {
@@ -44,7 +46,7 @@ namespace JetsonRemote {
     extern bool is_allowed; // Biến kiểm tra xem đã được cấp phép hay chưa
     extern std::chrono::time_point<std::chrono::steady_clock> last_packet_time; // Biến thời gian toàn cục
     // Biến quản lý ID Client
-    extern std::set<std::string> trusted_devices;
+    extern std::map<std::string, std::string> trusted_devices;
     extern std::string pending_device_id; // Nhớ lại xem thiết bị lạ nào đang xin cấp quyền
 
     // Khóa tĩnh 16-byte
@@ -64,6 +66,8 @@ namespace JetsonRemote {
     // 2 hàm quản lý Sổ
     void load_trusted_devices();
     void add_trusted_device(const std::string& id);
-    int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, int is_encrypt);
+    int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, const unsigned char *aes_key, const unsigned char *aes_iv, int is_encrypt);
+    std::string get_config_path();
+    std::string generate_aes_key();
 }
 #endif // JETSON_REMOTE_HPP

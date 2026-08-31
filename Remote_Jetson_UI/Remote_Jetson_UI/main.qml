@@ -14,10 +14,7 @@ Window {
     Shortcut {
         sequence: "Ctrl+I"
         onActivated: {
-            console.log("[*] User required change IP. Sending signal to close GStreamer and resetting state variables...")
-            backend.sendSignal(998, 0, 0, 0)
-
-            watchdogTimer.stop()
+            console.log("[*] User required change IP.")
             loadingPopup.close()
             pinPopup.close()
             ipPopup.open()
@@ -52,6 +49,15 @@ Window {
                 radius: 11
             }
         }
+
+        onOpened: {
+            checkKeyTimer.start()
+        }
+
+        onClosed: {
+            checkKeyTimer.stop()
+        }
+
         Column {
             anchors.centerIn: parent;
             spacing: 15;
@@ -169,10 +175,6 @@ Window {
             mainArea.forceActiveFocus() // ÉP màn hình chính cầm lại quyền!
         }
 
-        onOpened: {
-            watchdogTimer.stop()
-        }
-
         // Thiết kế background cho cái hộp thoại
         background: Rectangle {
             // Hiệu ứng kính mờ: Nền đen với độ trong suốt 70%
@@ -246,6 +248,9 @@ Window {
                 }
 
                 onClicked: {
+                    console.log("[*] Sending signal to close GStreamer and resetting state variables...")
+                    backend.sendSignal(998, 0, 0, 0)
+                    watchdogTimer.stop()
                     // Gửi IP xuống C++
                     backend.setTargetIp(ipInput.text)
 
@@ -257,57 +262,53 @@ Window {
                     loadingPopup.open()
                     loadingText.text = "Verifying..."
 
-                    // Lấy thông tin từ Web Server
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("GET", "http://" + targetIp + ":8080/api/check_auth?id=" + deviceId, true)
-                    xhr.timeout = 5000;
-
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState === XMLHttpRequest.DONE) {
-                            // Lấy kích thước màn hình hiện tại (Nếu chưa có thì ngầm định 0x0)
-                            let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 0
-                            let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 0
-
-                            let dynamicPin = Math.floor(1000 + Math.random() * 9000);
-                            console.log("Status xhr return: " + xhr.status)
-                            if (xhr.status === 200) {
-                                var response = JSON.parse(xhr.responseText);
-                                console.log("Status response return: " + response.status)
-                                // Nếu thiết bị nằm trong danh sách đã được cấp phép
-                                if (response.status === "trusted") {
-                                    console.log("[*] The device is on the permitted list!")
-                                    backend.setTargetIp(targetIp)
-                                    videoReceiver.resetResolution()
-                                    backend.sendSignal(999, w, h, dynamicPin)
-
-                                    loadingText.text = "Authenticated! Waiting for the Video stream..."
-                                } else {
-                                    // Nếu thiết bị không nằm trong danh sách đã được cấp phép
-                                    console.log("[*] The device isn't on the permitted list! Please provide the PIN to administrator to grant permission!")
-                                    backend.setTargetIp(targetIp)
-                                    videoReceiver.resetResolution()
-                                    backend.sendSignal(999, w, h, dynamicPin)
-
-                                    // Đóng Pop-up loading, mở Pop-up mã PIN
-                                    pinDisplay.text = dynamicPin.toString()
-                                    loadingPopup.close()
-                                    pinPopup.open()
-                                }
-                            } else {
-                                console.log("[!] An error occured while accessing the Server! Has the server gone down?")
-
-                                // Chuyển cờ lỗi bên Pop-up loading sang true
-                                loadingPopup.isError = true
-                                loadingText.text = "Query error! Please check your network connection or contact the administrator for more information."
-                            }
-                        }
-                    }
-
-                    xhr.send(); // Gửi lên Web Server
-
-                    // Trả lại quyền điều khiển cho màn hình chính
-                    //mainWindow.requestActivate()
+                    backend.checkAndFetchKey(targetIp, deviceId)
                 }
+            }
+        }
+    }
+
+    Connections {
+        target: backend
+
+        function onAuthStatusReceived(status) {
+            let targetIp = ipInput.text
+                
+            if (status === "trusted") {
+                console.log("[*] The device is on the permitted list!")
+                backend.setTargetIp(targetIp)
+                    
+                let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 0
+                let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 0
+                    
+                videoReceiver.resetResolution()
+                backend.sendSignal(999, w, h, 0) // Bật GStreamer
+
+                // Ẩn các pop-up
+                pinPopup.close() 
+                loadingText.text = "Authenticated! Waiting for the Video stream..."
+                    
+            } else if (status === "unknown") {
+                if (!pinPopup.opened) {
+                    console.log("[*] The device isn't on the permitted list! Please provide the PIN to administrator to grant permission!")
+                        
+                    // Gửi tín hiệu 999 để Jetson ghim mã PIN
+                    let w = videoReceiver.hostWidth > 0 ? videoReceiver.hostWidth : 0
+                    let h = videoReceiver.hostHeight > 0 ? videoReceiver.hostHeight : 0
+                    let dynamicPin = Math.floor(1000 + Math.random() * 9000);
+                        
+                    backend.setTargetIp(targetIp)
+                    backend.sendSignal(999, w, h, dynamicPin)
+
+                    // Đóng Loading, mở Pop-up mã PIN
+                    pinDisplay.text = dynamicPin.toString()
+                    loadingPopup.close()
+                    pinPopup.open()
+                }
+            } else {
+                console.log("[!] An error occured while accessing the Server! Has the server gone down?")
+                loadingPopup.isError = true
+                loadingText.text = "Query error! Please check your network connection or contact the administrator for more information."
             }
         }
     }
@@ -482,6 +483,17 @@ Window {
             // Gửi tin hiệu 111 sang Jetson
             // Jetson nhận được tín hiệu này thì cập nhật lại last_packet_time, không bao giờ bị timeout
             backend.sendSignal(111, 0, 0, 0)
+        }
+    }
+
+    // Watchdog Check key khi Pop-up nhập PIN đang hiển thị
+    Timer {
+        id: checkKeyTimer
+        interval: 2000
+        running: false
+        repeat: true
+        onTriggered: {
+            backend.checkAndFetchKey(ipInput.text, backend.getDeviceId())
         }
     }
 

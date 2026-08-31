@@ -7,21 +7,31 @@ namespace JetsonRemote {
     std::string target_ip = "127.0.0.1"; 
     std::string target_bitrate = "8000000";
     std::string pending_client_ip = "";
-    std::set<std::string> trusted_devices;
+    std::map<std::string, std::string> trusted_devices;
     std::string pending_device_id = "";
     int pairing_pin = -1;
     bool is_allowed = false; // Biến kiểm tra xem đã được cấp phép chưa
     bool is_streaming = false; // Biến cờ để đánh dấu trạng thái streaming
-    const unsigned char AES_KEY[20] = "DATANONYMUS_KEY_123";
-    const unsigned char AES_IV[20]  = "DATANONYMUS_IV_4567";
+
+    // Hàm quay random ra chuỗi 16 ký tự (AES-128)
+    std::string generate_aes_key() {
+        const std::string CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        std::random_device rd;
+        std::mt19937 generator(rd());
+        std::uniform_int_distribution<> dist(0, CHARS.size() - 1);
+        
+        std::string key;
+        for (int i = 0; i < 16; ++i) key += CHARS[dist(generator)];
+        return key;
+    }
 
     // Hàm thực thi AES-128-CTR (is_encrypt = 1 là Mã hóa, 0 là Giải mã)
-    int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, int is_encrypt) {
+    int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, const unsigned char *aes_key, const unsigned char *aes_iv, int is_encrypt) {
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
         int len = 0;
         int out_len = 0;
         
-        EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, AES_KEY, AES_IV, is_encrypt);
+        EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, aes_key, aes_iv, is_encrypt);
         EVP_CipherUpdate(ctx, out_data, &len, in_data, in_len);
         out_len = len;
         EVP_CipherFinal_ex(ctx, out_data + len, &len);
@@ -202,22 +212,35 @@ namespace JetsonRemote {
         return latest_tegrastats;
     }
 
+    // Get absolute path
+    std::string get_config_path() {
+        std::string path;
+        // Ubuntu/Linux: /home/<User_Name>/.config/jetson-remote/
+        path = std::string(getenv("HOME")) + "/.config/jetson-remote-ui/";
+        system(("mkdir -p \"" + path + "\"").c_str()); 
+        return path + "trusted_devices.txt";
+    }
+
     // Đọc danh sách thiết bị khi vừa chạy lên
     void load_trusted_devices() {
-        std::ifstream file("trusted_devices.txt");
-        std::string line;
-        while (std::getline(file, line)) {
-            if (!line.empty()) trusted_devices.insert(line);
+        std::string path = get_config_path();
+        std::ifstream file(path);
+        std::string id, key;
+        while (file >> id >> key) {
+            trusted_devices[id] = key;
         }
         std::cout << "[*] Đã tải " << trusted_devices.size() << " thiết bị đã lưu từ danh sách thiết bị.\n";
     }
 
     // Thêm Client mới vào danh sách
-    void add_trusted_device(const std::string& id) {
+    void add_trusted_device(const std::string& id, const std::string& key) {
         if (trusted_devices.find(id) == trusted_devices.end()) {
-            trusted_devices.insert(id);
-            std::ofstream file("trusted_devices.txt", std::ios::app); // Mở file ở chế độ append
-            file << id << "\n";
+            trusted_devices[id] = key;
+            std::string path = get_config_path();
+            std::ofstream file(path, std::ios::app); // Mở file ở chế độ append
+            file << id << " " << key << "\n";
+            // Ép hệ điều hành khóa file: Chỉ root/owner mới được đọc
+            system(("chmod 600 \"" + path + "\"").c_str());
             std::cout << "[+] Đã thêm Client \"" << id << "\" vào danh sách thiết bị" << "\n";
         }
     }
@@ -248,11 +271,13 @@ namespace JetsonRemote {
                 std::cout << "[DEBUG] WebUI nhập PIN: " << entered_pin << " | Jetson đang chờ PIN: " << pairing_pin << "\n";
 
                 // Nếu khớp pin và đang có Client xin vào
-                if (entered_pin == pairing_pin && pairing_pin != -1) {
-                    std::cout << "[+] Đã duyệt! Đang mở cổng cho Client " << pending_client_ip << "\n";
+                if (received_hash == expected_hash && entered_pin == pairing_pin && pairing_pin != -1) {
+                    // Sinh khóa mã hóa 16-byte
+                    std::string new_aes_key = generate_aes_key();
                     
                     // Thêm thiết bị vào danh sách
-                    JetsonRemote::add_trusted_device(pending_device_id);
+                    JetsonRemote::add_trusted_device(pending_device_id, new_aes_key);
+                    std::cout << "[+] Đã duyệt! Đang mở cổng cho Client " << pending_client_ip << "\n";
                     target_ip = pending_client_ip; // Gán IP chính thức
                     pending_client_ip = ""; // Xóa hàng chờ
                     pairing_pin = -1; // Hủy mã PIN cũ (để chống Replay attack)
@@ -294,7 +319,12 @@ namespace JetsonRemote {
                 std::string id = req.get_param_value("id");
 
                 if (trusted_devices.find(id) != trusted_devices.end()) {
-                    res.set_content("{\"status\":\"trusted\"}", "application/json");
+                    // Nếu là máy đã biết, lấy khóa ra
+                    std::string device_key = trusted_devices[id];
+
+                    // Trả key về cho Client
+                    std::string json_response = "{\"status\":\"trusted\", \"aes_key\":\"" + device_key + "\"}";
+                    res.set_content(json_response, "application/json");
                     return;
                 }
             }
