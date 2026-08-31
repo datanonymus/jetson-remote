@@ -25,20 +25,27 @@ namespace JetsonRemote {
         return key;
     }
 
+    // Struct tự động dọn rác
+    struct AesContextWrapper {
+        EVP_CIPHER_CTX* ctx;
+        AesContextWrapper() {
+            ctx = EVP_CIPHER_CTX_new();
+        }
+        ~AesContextWrapper() {
+            // Tự động dọn rác khi luồng kết thúc hoặc app tắt
+            if (ctx) EVP_CIPHER_CTX_free(ctx);
+        }
+    };
+
     // Hàm thực thi AES-128-CTR (is_encrypt = 1 là Mã hóa, 0 là Giải mã)
     int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, const unsigned char *aes_key, const unsigned char *aes_iv, int is_encrypt) {
-        EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+        thread_local AesContextWrapper wrapper; 
         int len = 0;
-        int out_len = 0;
+        EVP_CipherInit_ex(wrapper.ctx, EVP_aes_128_ctr(), nullptr, aes_key, aes_iv, is_encrypt);
+        EVP_CipherUpdate(wrapper.ctx, out_data, &len, in_data, in_len);
+        EVP_CipherFinal_ex(wrapper.ctx, out_data + len, &len);
         
-        EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, aes_key, aes_iv, is_encrypt);
-        EVP_CipherUpdate(ctx, out_data, &len, in_data, in_len);
-        out_len = len;
-        EVP_CipherFinal_ex(ctx, out_data + len, &len);
-        out_len += len;
-        
-        EVP_CIPHER_CTX_free(ctx);
-        return out_len;
+        return in_len;
     }
 
     void init_virtual_mouse(int width, int height) {
