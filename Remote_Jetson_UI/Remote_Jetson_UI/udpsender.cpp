@@ -172,11 +172,13 @@ void UdpSender::sendSignal(int signal, int width, int height, int pin)
 
     QSettings settings("Datanonymus", "Jetson_Remote_Client");
     QString savedKey = settings.value("AES_KEY_" + QString(m_device_id), "").toString();
-    QByteArray keyBytes = savedKey.toUtf8();
-    const unsigned char* aes_key_ptr = reinterpret_cast<const unsigned char*>(keyBytes.constData());
+    if (!savedKey.isEmpty()) {
+        QByteArray keyBytes = savedKey.toUtf8();
+        const unsigned char* aes_key_ptr = reinterpret_cast<const unsigned char*>(keyBytes.constData());
 
-    // Chỉ mã hóa 32 bytes đầu, sử dụng AES_KEY đã lưu sẵn và AES_IV được tạo ra trước đó
-    process_aes_ctr(raw_buffer, 32, raw_buffer, aes_key_ptr, random_iv, 1);
+        // Chỉ mã hóa 32 bytes đầu, sử dụng AES_KEY đã lưu sẵn và AES_IV được tạo ra trước đó
+        process_aes_ctr(raw_buffer, 32, raw_buffer, aes_key_ptr, random_iv, 1);
+    }
 
     // Đóng gói và gửi sang Jetson bằng m_targetIp
     m_socket->writeDatagram(reinterpret_cast<const char*>(raw_buffer),
