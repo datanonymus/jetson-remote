@@ -1,5 +1,5 @@
 ![Jetson Remote Banner](Official_Banner.png)
-# 🚀 Jetson Remote V2.1.1
+# 🚀 Jetson Remote V2.2.0
 **Ultra Low-Latency Hardware-Accelerated Remote Desktop & Monitoring for NVIDIA Jetson**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -24,7 +24,11 @@ By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jet
 * **Add Support for Windows**: Now you can install this application into Windows, using pre-compiled .exe file in Release tab
 * **Add .deb installer for Ubuntu**: Easy to install this application without build it again anymore!
 * **Enhanced UI Design**: Change language into English, and add some "topping" for better UI experience!
-
+## ✨ What's New in V2.2.0:
+* **End-to-End AES Encryption**: All mouse and keyboard telemetry over UDP is now fully encrypted using hardware-accelerated AES-128-CTR. Your control data is completely protected against packet sniffing and MITM (Man-in-the-Middle) attacks while maintaining zero-latency transmission.
+* **Smart Key Vault & Auto-Exchange**: The Client now automatically fetches and securely locks the encryption key into local storage (Registry/.conf) immediately after WebUI PIN authorization. Enjoy seamless reconnections with zero manual key management.
+* **Zero-Allocation Polling Engine**: Completely refactored the C++ backend's UDP loop with memory caching and RAII techniques. The system now parses 1000Hz peripheral inputs with zero dynamic memory allocation, preventing memory leaks and maintaining rock-solid stability during long remote sessions.
+* **Optimized QML Auth Flow**: Overhauled the Frontend connection logic. The UI now handles asynchronous background key-fetching and dynamic PIN pop-ups smoothly, eliminating UI freezes and state conflicts.
 ## 🏗 Architecture
 This repository contains two main components:
 * `Server_Jetson/`: The C++ UDP Server & Web API running on the NVIDIA Jetson.
