@@ -28,6 +28,7 @@ struct MouseAndKeyboardPacket {
     int x, y, click, scroll; // Dùng cho chức năng của chuột
     int signal; // Dùng để gửi lệnh đặc biệt như "bật stream" hoặc "tắt stream"
     int is_keyboard, keycode, keystate; // Dùng cho chức năng của bàn phím
+    char iv[16]; // AES-IV key
     char device_id[32]; // ID cho Client
 };
 
