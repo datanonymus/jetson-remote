@@ -93,8 +93,9 @@ int main(int argc, char *argv[]) {
             unsigned char* incoming_iv = reinterpret_cast<unsigned char*>(temp_ptr->iv);
             if (cached_device_id.empty() || std::strncmp(temp_ptr->device_id, cached_device_id.c_str(), 32) != 0) {
                 std::string incoming_id(temp_ptr->device_id);
+                auto it = JetsonRemote::trusted_devices.find(incoming_id);
                 // Lục sổ xem thiết bị này có Khóa chưa
-                if (JetsonRemote::trusted_devices.find(incoming_id) != JetsonRemote::trusted_devices.end()) {
+                if (it != JetsonRemote::trusted_devices.end()) {
                     cached_device_id = incoming_id; // Lưu ID vào Cache
                     cached_aes_key = reinterpret_cast<const unsigned char*>(it->second.c_str()); // Lưu Key vào Cache
                 } else {
