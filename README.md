@@ -46,7 +46,7 @@ sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-bad gstreamer1.0-plugin
 ### Build & Run
 ```bash
 cd Server_Jetson
-g++ jetson_remote.cpp jetson_remote_main.cpp -o jetson_remote -lpthread
+g++ jetson_remote.cpp jetson_remote_main.cpp -o jetson_remote -lpthread -lcrypto
 sudo -E ./jetson_remote :0
 ```
 
