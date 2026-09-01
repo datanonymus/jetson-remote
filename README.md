@@ -40,7 +40,7 @@ Your Jetson must be running NVIDIA L4T (Linux for Tegra) with the X11 display se
 
 ```bash
 sudo apt update
-sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav libx11-dev
+sudo apt install gstreamer1.0-tools gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav libx11-dev libssl-dev
 ```
 
 ### Build & Run
