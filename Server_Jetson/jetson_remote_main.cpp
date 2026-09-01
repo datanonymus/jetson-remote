@@ -116,7 +116,9 @@ int main(int argc, char *argv[]) {
             //          << " | signal: " << packet.signal << "\n";
 
             // Cập nhật lại thời gian nhận gói tin mới nhất
-            JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
+            if (cached_aes_key != nullptr || packet.signal == 999 || packet.signal == 111 || packet.signal == 998) {
+                JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
+            }
 
             // Dịch IP của Laptop từ mã nhị phân sang chuỗi
             std::string sender_ip = inet_ntoa(client_addr.sin_addr);
@@ -157,7 +159,8 @@ int main(int argc, char *argv[]) {
                 }
 
                 if (JetsonRemote::is_streaming) {
-                    JetsonRemote::stop_gstreamer(); 
+                    JetsonRemote::stop_gstreamer();
+                    JetsonRemote::is_streaming = false;
                 }
                 
                 current_w = 0; 
@@ -204,28 +207,44 @@ int main(int argc, char *argv[]) {
 
                 else 
                 {
-                    // Bắn tọa độ X, Y vào Kernel
-                    JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_X, packet.x);
-                    JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_Y, packet.y);
+                    // Biến lưu trạng thái chuột hiện tại và đếm thời gian
+                    static auto last_mouse_emit = std::chrono::steady_clock::now();
+                    static int last_click_state = 0; 
+                    
+                    auto now_mouse = std::chrono::steady_clock::now();
+                    auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(now_mouse - last_mouse_emit).count();
 
-                    // Bắn phím chuột
-                    if (packet.click == 1) {
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 1); // Giữ chuột trái
-                    } else if (packet.click == 2) {
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 1); // Giữ chuột phải
-                    } else if (packet.click == 3) {
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 1); // Giữ chuột giữa
-                    } else if (packet.click == 0) {
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 0); // Nhả trái
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 0); // Nhả phải
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 0); // Nhả giữa
-                    }
-                    if (packet.scroll != 0) {
-                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_REL, REL_WHEEL, packet.scroll);
+                    bool force_emit = false;
+                    
+                    // Nếu trạng thái Click thay đổi, hoặc có lăn chuột thì buộc xử lý ngay
+                    if (packet.click != last_click_state || packet.scroll != 0) {
+                        force_emit = true;
+                        
+                        if (packet.click == 1) JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 1); // Giữ chuột trái
+                        else if (packet.click == 2) JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 1); // Giữ chuột phải
+                        else if (packet.click == 3) JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 1); // Giữ chuột giữa
+                        else if (packet.click == 0) {
+                            JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_LEFT, 0); // Nhả trái
+                            JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_RIGHT, 0); // Nhả phải
+                            JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_KEY, BTN_MIDDLE, 0); // Nhả giữa
+                        }
+                        
+                        if (packet.scroll != 0) {
+                            JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_REL, REL_WHEEL, packet.scroll);
+                        }
+                        
+                        last_click_state = packet.click; // Cập nhật lại bộ nhớ
                     }
 
-                    // Chốt Sync 1 lần duy nhất để OS nhận diện toàn bộ hành động
-                    JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_SYN, SYN_REPORT, 0);
+                    // Bắn tọa độ khi có click hoặc đã đủ thời gian hãm (8ms cho 125Hz)
+                    if (force_emit || time_diff >= 8) {
+                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_X, packet.x);
+                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_ABS, ABS_Y, packet.y);
+                        // Chốt Sync 1 lần duy nhất để OS nhận diện toàn bộ hành động
+                        JetsonRemote::emit_event(JetsonRemote::uinput_fd, EV_SYN, SYN_REPORT, 0);
+                        
+                        last_mouse_emit = now_mouse; // Reset đồng hồ
+                    }
                 }
             }
         }

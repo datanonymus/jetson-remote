@@ -46,10 +46,10 @@ jobs:
         run: |
           cd build
           cpack -G DEB
-          mv *.deb Jetson_Remote_Client_v2.2.0_${{ matrix.os }}_setup.deb
+          mv *.deb Jetson_Remote_Client_v2.2.1_${{ matrix.os }}_setup.deb
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Jetson_Remote_Client_v2.2.0_${{ matrix.os }}_setup
+          name: Jetson_Remote_Client_v2.2.1_${{ matrix.os }}_setup
           path: build/*.deb

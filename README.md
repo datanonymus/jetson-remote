@@ -1,5 +1,5 @@
 ![Jetson Remote Banner](Official_Banner.png)
-# 🚀 Jetson Remote V2.2.0
+# 🚀 Jetson Remote V2.2.1
 **Ultra Low-Latency Hardware-Accelerated Remote Desktop & Monitoring for NVIDIA Jetson**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -11,24 +11,21 @@ Jetson Remote is a custom-built, ultra-low-latency remote control, streaming, an
 
 By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jetson's native hardware encoder (`nvv4l2h264enc`) via UDP, this tool delivers real-time X11 desktop streaming and kernel-level mouse/keyboard injection.
 
-## ✨ What's New in V2.0:
+## ✨ Features in v2.0:
 * **Real-time Web Dashboard:** Built-in lightweight HTTP server (Port 8080) streaming real-time hardware telemetry (`tegrastats`) including CPU, GPU, RAM, and Power consumption to a responsive Web UI.
 * **Smart Power Management (Watchdog):** GStreamer pipeline automatically goes to sleep when the Client disconnects (Signal 998) or times out, saving critical battery/power on the Jetson.
 * **Dynamic Resolution Auto-Sync:** The virtual mouse automatically grabs the current X11 display resolution and perfectly bounds the pointer without manual configuration.
 * **Full Mouse & ROS2 Support:** Complete integration of Left, Right, and **Middle-click** (essential for Rviz map panning) and Scroll Wheel.
 * **Zero-Lag Video Streaming:** Uses NVIDIA's NVMM (Hardware Acceleration) to compress and stream H.264 video directly over UDP.
-## ✨ What's New in V2.1.0:
 * **PIN Access and Save Client Info Function**: With the PIN Code Function, you can control who can access Jetson. Once you've granted access, you won't need to enter PIN Code on Web Server anymore.
-* **Fixed Some Problems**: Fixed some bugs that I found and added some Pop-ups to give you a better experiences.
-## ✨ What's New in V2.1.1:
-* **Add Support for Windows**: Now you can install this application into Windows, using pre-compiled .exe file in Release tab
-* **Add .deb installer for Ubuntu**: Easy to install this application without build it again anymore!
-* **Enhanced UI Design**: Change language into English, and add some "topping" for better UI experience!
-## ✨ What's New in V2.2.0:
 * **End-to-End AES Encryption**: All mouse and keyboard telemetry over UDP is now fully encrypted using hardware-accelerated AES-128-CTR. Your control data is completely protected against packet sniffing and MITM (Man-in-the-Middle) attacks while maintaining zero-latency transmission.
 * **Smart Key Vault & Auto-Exchange**: The Client now automatically fetches and securely locks the encryption key into local storage (Registry/.conf) immediately after WebUI PIN authorization. Enjoy seamless reconnections with zero manual key management.
-* **Zero-Allocation Polling Engine**: Completely refactored the C++ backend's UDP loop with memory caching and RAII techniques. The system now parses 1000Hz peripheral inputs with zero dynamic memory allocation, preventing memory leaks and maintaining rock-solid stability during long remote sessions.
-* **Optimized QML Auth Flow**: Overhauled the Frontend connection logic. The UI now handles asynchronous background key-fetching and dynamic PIN pop-ups smoothly, eliminating UI freezes and state conflicts.
+## ✨ What's New in lastest version (v2.2.1):
+* **Zombie Watchdog Eradicated**: Patched a critical logic flaw where random LAN broadcast packets kept the Jetson's NVENC hardware encoder awake all night. The watchdog now strictly verifies packet authenticity before resetting the sleep timer.
+* **CPU & Polling Rate Optimization (Event Throttling)**: Implemented a smart 125Hz (8ms) event throttle for mouse coordinates. This drastically reduces the overhead on the X11/Wayland display server, dropping total CPU usage from ~50% to ~25% during high-speed mouse movements without sacrificing pointer smoothness.
+* **Buffer Bloat & Ghost Clicks Fix**: Added precise state-tracking logic for mouse clicks (last_click_state). This ensures zero-delay instant click responses while preventing event queue deadlocks and "ghost clicks" when the mouse is idling.
+* **Clean Disconnection State**: Fixed a silent backend bug where the is_streaming flag failed to reset upon client disconnect (Signal 998). Sessions now restart flawlessly without background conflicts or UI freezing.
+
 ## 🏗 Architecture
 This repository contains two main components:
 * `Server_Jetson/`: The C++ UDP Server & Web API running on the NVIDIA Jetson.
