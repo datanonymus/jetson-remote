@@ -1,5 +1,5 @@
 ![Jetson Remote Banner](Official_Banner.png)
-# 🚀 Jetson Remote V2.2.1
+# 🚀 Jetson Remote V2.2.2
 **Ultra Low-Latency Hardware-Accelerated Remote Desktop & Monitoring for NVIDIA Jetson**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
