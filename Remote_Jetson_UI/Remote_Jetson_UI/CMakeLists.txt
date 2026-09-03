@@ -89,7 +89,7 @@ install(FILES logo.png DESTINATION share/pixmaps RENAME jetson-remote-logo.png)
 install(FILES jetson-remote.desktop DESTINATION share/applications)
 
 set(CPACK_PACKAGE_NAME "jetson-remote-ui")
-set(CPACK_PACKAGE_VERSION "2.2.1")
+set(CPACK_PACKAGE_VERSION "2.2.2")
 set(CPACK_PACKAGE_CONTACT "Nguyen Trong Dat")
 set(CPACK_GENERATOR "DEB")
 

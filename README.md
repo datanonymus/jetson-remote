@@ -20,11 +20,15 @@ By bypassing traditional laggy protocols (like VNC or AnyDesk) and utilizing Jet
 * **PIN Access and Save Client Info Function**: With the PIN Code Function, you can control who can access Jetson. Once you've granted access, you won't need to enter PIN Code on Web Server anymore.
 * **End-to-End AES Encryption**: All mouse and keyboard telemetry over UDP is now fully encrypted using hardware-accelerated AES-128-CTR. Your control data is completely protected against packet sniffing and MITM (Man-in-the-Middle) attacks while maintaining zero-latency transmission.
 * **Smart Key Vault & Auto-Exchange**: The Client now automatically fetches and securely locks the encryption key into local storage (Registry/.conf) immediately after WebUI PIN authorization. Enjoy seamless reconnections with zero manual key management.
-## ✨ What's New in lastest version (v2.2.1):
-* **Zombie Watchdog Eradicated**: Patched a critical logic flaw where random LAN broadcast packets kept the Jetson's NVENC hardware encoder awake all night. The watchdog now strictly verifies packet authenticity before resetting the sleep timer.
-* **CPU & Polling Rate Optimization (Event Throttling)**: Implemented a smart 125Hz (8ms) event throttle for mouse coordinates. This drastically reduces the overhead on the X11/Wayland display server, dropping total CPU usage from ~50% to ~25% during high-speed mouse movements without sacrificing pointer smoothness.
-* **Buffer Bloat & Ghost Clicks Fix**: Added precise state-tracking logic for mouse clicks (last_click_state). This ensures zero-delay instant click responses while preventing event queue deadlocks and "ghost clicks" when the mouse is idling.
-* **Clean Disconnection State**: Fixed a silent backend bug where the is_streaming flag failed to reset upon client disconnect (Signal 998). Sessions now restart flawlessly without background conflicts or UI freezing.
+## ✨ What's New in lastest version (v2.2.2):
+
+* **Multi-Client UDP Reflector**: The Jetson server now supports multiple concurrent remote connections seamlessly. Video streams are efficiently duplicated and broadcasted at the C++ socket layer via a local reflector (127.0.0.1), completely eliminating pipeline crashes and interruptions when new clients connect.
+
+* **ZeroTier & WAN Optimizations**: Heavily tuned the GStreamer pipeline to survive high-latency, low-bandwidth VPN environments (ZeroTier, Tailscale). Added a strict 1-frame leaky queue (leaky=downstream) to eradicate "buffer bloat," ensuring mouse movements remain instantaneous without lagging behind network delays.
+
+* **Anti-Smudge I-Frame Tuning**: Fixed "macroblocking" and color smudging artifacts that occurred during fast window movements over unstable networks. Calibrated idrinterval and iframeinterval to continuously wash the display with fresh keyframes, keeping the image sharp.
+
+* **Legacy Client Hard-Block**: Implemented precise packet-size validation at the network gate. Unencrypted packets from outdated v2.1.x clients are now instantly dropped before processing, preventing garbage data from poisoning the AES-128 decryption engine and corrupting the server state.
 
 ## 🏗 Architecture
 This repository contains two main components:
