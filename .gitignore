@@ -9,5 +9,5 @@ jetson_remote
 
 # Bỏ qua file log rác
 *.log
-.vscode/
+.vscode/*.json
 trusted_devices.txt

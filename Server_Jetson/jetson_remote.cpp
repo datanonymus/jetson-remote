@@ -12,6 +12,8 @@ namespace JetsonRemote {
     int pairing_pin = -1;
     bool is_allowed = false; // Biến kiểm tra xem đã được cấp phép chưa
     bool is_streaming = false; // Biến cờ để đánh dấu trạng thái streaming
+    std::unordered_set<std::string> active_clients;
+    std::mutex client_mtx;
 
     // Hàm quay random ra chuỗi 16 ký tự (AES-128)
     std::string generate_aes_key() {
@@ -107,6 +109,7 @@ namespace JetsonRemote {
         exit(0);
     }
 
+    // Hàm khởi động lại GStreamer
     void restart_gstreamer() {
         std::cout << "\n[*] Đang kiểm tra và dọn dẹp luồng GStreamer cũ...\n";
         
@@ -119,12 +122,13 @@ namespace JetsonRemote {
         
         // Dùng "echo $!" để lấy PID của tiến trình vừa chạy ngầm và lưu vào file
         std::string gst_cmd = "nohup gst-launch-1.0 ximagesrc display-name=" + target_display + 
-                            " use-damage=0 ! video/x-raw,framerate=60/1 ! nvvidconv ! 'video/x-raw(memory:NVMM),format=NV12' ! nvv4l2h264enc insert-sps-pps=true maxperf-enable=1 preset-level=1 control-rate=1 bitrate=" + target_bitrate + 
-                            " profile=4 ! rtph264pay mtu=1200 config-interval=1 ! udpsink host=" + target_ip + 
-                            " port=5000 buffer-size=2147483647 > /dev/null 2>&1 & echo $! > /tmp/jetson_remote_gst.pid";
+                            " use-damage=0 ! video/x-raw,framerate=60/1 ! nvvidconv ! 'video/x-raw(memory:NVMM),format=NV12' !" + 
+                            " nvv4l2h264enc insert-sps-pps=true insert-aud=true insert-vui=true idrinterval=30 iframeinterval=30 vbv-size=" + target_bitrate + 
+                            " maxperf-enable=1 preset-level=1 control-rate=1 bitrate=" + target_bitrate + 
+                            " profile=0 ! rtph264pay mtu=1200 config-interval=1 ! queue max-size-buffers=1 leaky=downstream ! udpsink host=127.0.0.1 port=5000 buffer-size=4194304 sync=false async=false > /dev/null 2>&1 & echo $! > /tmp/jetson_remote_gst.pid";
 
         if (system(gst_cmd.c_str()) < 0) {/*Bỏ qua lỗi*/}
-        std::cout << "[+] Đã khởi động GStreamer! Đang gửi " << target_bitrate << " bps tới IP " << target_ip << "...\n";
+        std::cout << "[+] Đã khởi động GStreamer! Đang gửi " << target_bitrate << " bps tới IP " << "127.0.0.1" << "...\n";
     }
 
     void emit_event(int fd, int type, int code, int val) {
@@ -135,7 +139,38 @@ namespace JetsonRemote {
         ie.value = val;
         if (write(fd, &ie, sizeof(ie)) < 0) {/*Bỏ qua lỗi*/}
     }
-
+    
+    // Hàm UDP Forward để gửi Video cho các Client
+    void video_forwarder_worker() {
+        int in_sock = socket(AF_INET, SOCK_DGRAM, 0);
+        int out_sock = socket(AF_INET, SOCK_DGRAM, 0); // Socket để gửi đi
+        
+        int buffer_size = 4 * 1024 * 1024;
+        setsockopt(in_sock, SOL_SOCKET, SO_RCVBUF, &buffer_size, sizeof(buffer_size));
+        setsockopt(out_sock, SOL_SOCKET, SO_SNDBUF, &buffer_size, sizeof(buffer_size));
+    
+        struct sockaddr_in local_addr{};
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_port = htons(5000); // Hứng video từ GStreamer
+        local_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        bind(in_sock, (struct sockaddr*)&local_addr, sizeof(local_addr));
+    
+        char buffer[2048];
+        while (true) {
+            ssize_t len = recv(in_sock, buffer, sizeof(buffer), 0);
+            if (len > 0) {
+                std::lock_guard<std::mutex> lock(client_mtx);
+                for (const auto& ip : active_clients) {
+                    struct sockaddr_in dest{};
+                    dest.sin_family = AF_INET;
+                    dest.sin_port = htons(5000); // Cổng Client đang nghe
+                    dest.sin_addr.s_addr = inet_addr(ip.c_str());
+                    sendto(out_sock, buffer, len, 0, (struct sockaddr*)&dest, sizeof(dest));
+                }
+            }
+        }
+    }
+    
     // Luồng giám sát X11 bằng xrandr
     void monitor_resolution() {
         int current_w = 0, current_h = 0;

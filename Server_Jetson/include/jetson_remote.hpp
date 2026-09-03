@@ -49,6 +49,8 @@ namespace JetsonRemote {
     // Biến quản lý ID Client
     extern std::map<std::string, std::string> trusted_devices;
     extern std::string pending_device_id; // Nhớ lại xem thiết bị lạ nào đang xin cấp quyền
+    extern std::unordered_set<std::string> active_clients;
+    extern std::mutex client_mtx;
 
     // Khai báo các hàm sẽ dùng
     void init_virtual_mouse(int width, int height);
@@ -66,5 +68,6 @@ namespace JetsonRemote {
     int process_aes_ctr(const unsigned char *in_data, int in_len, unsigned char *out_data, const unsigned char *aes_key, const unsigned char *aes_iv, int is_encrypt);
     std::string get_config_path();
     std::string generate_aes_key();
+    void video_forwarder_worker();
 }
 #endif // JETSON_REMOTE_HPP

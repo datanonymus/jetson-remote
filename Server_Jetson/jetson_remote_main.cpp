@@ -18,20 +18,14 @@ int main(int argc, char *argv[]) {
             JetsonRemote::target_display = env_disp;
         }
     }
-
-    // Lấy IP Laptop
-    if (argc > 2) {
-        JetsonRemote::target_ip = argv[2];
-    }
     
     // Lấy Bitrate
-    if (argc > 3) {
-        JetsonRemote::target_bitrate = argv[3];
+    if (argc > 2) {
+        JetsonRemote::target_bitrate = argv[2];
     }
 
     std::cout << "[+] Thông số cấu hình:\n";
     std::cout << "        Màn hình : " << JetsonRemote::target_display << "\n";
-    std::cout << "        Bắn tới IP:   " << JetsonRemote::target_ip << "\n";
     std::cout << "        Bitrate:      " << JetsonRemote::target_bitrate << " bps\n";
 
     // Chạy luồng giám sát tegrastats để lấy dữ liệu phần cứng liên tục
@@ -40,6 +34,9 @@ int main(int argc, char *argv[]) {
     // Kích hoạt Web Server chạy ở một luồng riêng biệt
     std::thread web_thread(JetsonRemote::start_web_server);
     web_thread.detach();
+    // Kích hoạt trạm trung chuyển Video đa luồng
+    std::thread forwarder_thread(JetsonRemote::video_forwarder_worker);
+    forwarder_thread.detach();
 
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in server_addr;
@@ -84,9 +81,14 @@ int main(int argc, char *argv[]) {
         }
 
         unsigned char encrypted_buffer[sizeof(MouseAndKeyboardPacket)];
+        
+        ssize_t bytes_read = recvfrom(sock, encrypted_buffer, sizeof(encrypted_buffer), 0, (struct sockaddr *)&client_addr, &client_len);
 
-        if (recvfrom(sock, encrypted_buffer, sizeof(encrypted_buffer), 0, (struct sockaddr *)&client_addr, &client_len) > 0) {
-
+        if (bytes_read > 0) {
+            if (bytes_read != sizeof(MouseAndKeyboardPacket)) {
+                std::cout << "\n[!] Warning: Detected old version of client (v2.1.x). Reject message!\n";
+                continue;
+            }
             MouseAndKeyboardPacket* temp_ptr = reinterpret_cast<MouseAndKeyboardPacket*>(encrypted_buffer);
             
             // Đọc trần IV từ phần đuôi gói tin
@@ -134,10 +136,14 @@ int main(int argc, char *argv[]) {
                     
                     JetsonRemote::pending_client_ip = "";
                     JetsonRemote::pairing_pin = -1;
-                    JetsonRemote::target_ip = sender_ip; // Cập nhật lại IP
-                    JetsonRemote::restart_gstreamer();
-                    JetsonRemote::is_streaming = true;
-                    JetsonRemote::last_packet_time = std::chrono::steady_clock::now();
+                    
+                    std::lock_guard<std::mutex> lock(JetsonRemote::client_mtx);
+                    JetsonRemote::active_clients.insert(sender_ip); // Đưa IP mới vào danh sách
+                    
+                    if (!JetsonRemote::is_streaming) {
+                        JetsonRemote::restart_gstreamer();
+                        JetsonRemote::is_streaming = true;
+                    }
                 } else {
                     // Lưu IP và mã PIN để WebUI kiểm tra và cấp phép
                     JetsonRemote::pending_client_ip = sender_ip;
@@ -157,8 +163,11 @@ int main(int argc, char *argv[]) {
                     JetsonRemote::pending_client_ip = "";
                     JetsonRemote::pairing_pin = -1;
                 }
-
-                if (JetsonRemote::is_streaming) {
+                
+                std::lock_guard<std::mutex> lock(JetsonRemote::client_mtx);
+                JetsonRemote::active_clients.erase(sender_ip);
+                
+                if (JetsonRemote::active_clients.empty() && JetsonRemote::is_streaming) {
                     JetsonRemote::stop_gstreamer();
                     JetsonRemote::is_streaming = false;
                 }
